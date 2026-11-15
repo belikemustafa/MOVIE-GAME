@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>CineSpotle — Guess the Movie (Hollywood, Bollywood, Kannada & Pan-India)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-obsidian: #0b0f19;
+      --bg-surface: #131929;
+      --bg-tile: #1b2338;
+      --accent-green: #22c55e;
+      --accent-gold: #eab308;
+      --accent-magenta: #ec4899;
+      --accent-rose: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-obsidian);
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    button, [role="button"], input, select {
+      touch-action: manipulation;
+    }
+
+    /* Glowing Cinema Marquee Bulb Strip */
+    .marquee-strip {
+      background: linear-gradient(90deg, #161026 0%, #261029 50%, #161026 100%);
+      border-bottom: 1px solid rgba(236, 72, 153, 0.28);
+      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.14);
+    }
+
+    .marquee-bulb {
+      width: 7px;
+      height: 7px;
+      border-radius: 9999px;
+      background: #fde047;
+      box-shadow: 0 0 8px #facc15, 0 0 14px #f59e0b;
+      animation: bulbPulse 1.8s infinite ease-in-out;
+    }
+
+    .marquee-bulb:nth-child(even) {
+      background: #fb7185;
+      box-shadow: 0 0 8px #f43f5e, 0 0 14px #ec4899;
+      animation-delay: 0.9s;
+    }
+
+    @keyframes bulbPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.42; transform: scale(0.84); }
+    }
+
+    /* Spotle Midnight Theme Override */
+    body.theme-midnight .marquee-strip {
+      display: none;
+    }
+
+    body.theme-midnight {
+      background: radial-gradient(circle at top center, #141c33 0%, #0b0f19 55%);
+    }
+
+    /* Card Flip / Reveal Animation */
+    @keyframes cardSlideIn {
+      0% {
+        opacity: 0;
+        transform: translateY(-14px) scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .guess-card-enter {
+      animation: cardSlideIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Tile Status Colors */
+    .tile-exact {
+      background: linear-gradient(145deg, rgba(34, 197, 94, 0.24), rgba(22, 163, 74, 0.34));
+      border-color: rgba(34, 197, 94, 0.72);
+      box-shadow: inset 0 1px 0 rgba(134, 239, 172, 0.22), 0 4px 14px rgba(34, 197, 94, 0.14);
+    }
+
+    .tile-close {
+      background: linear-gradient(145deg, rgba(234, 179, 8, 0.22), rgba(217, 119, 6, 0.32));
+      border-color: rgba(245, 158, 11, 0.72);
+      box-shadow: inset 0 1px 0 rgba(253, 224, 71, 0.2), 0 4px 14px rgba(245, 158, 11, 0.12);
+    }
+
+    .tile-miss {
+      background-color: #1b2338;
+      border-color: rgba(148, 163, 184, 0.16);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27324d;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b4b73;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-pink-500/30 selection:text-pink-200">
+
+  <!-- Top Cinema Marquee Bulb Strip -->
+  <div id="marquee-strip" class="marquee-strip w-full py-1.5 px-2 overflow-hidden" aria-hidden="true">
+    <div id="marquee-bulbs" class="max-w-3xl mx-auto flex items-center justify-between gap-1.5"></div>
+  </div>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 bg-[#0b0f19]/92 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-3xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+      <!-- Left: Hamburger Menu Drawer Trigger -->
+      <div class="flex items-center gap-2">
+        <button id="btn-open-drawer" type="button" aria-label="Open Industry and Mode Menu"
+          class="p-2.5 rounded-xl bg-[#131929] hover:bg-[#1b2338] active:scale-95 border border-slate-800 text-slate-200 transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <span id="active-filter-badge" class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-pink-500/15 text-pink-300 border border-pink-500/30">
+          All Industries
+        </span>
+      </div>
+
+      <!-- Center: CineSpotle Brand Logo -->
+      <div class="flex flex-col items-center justify-center select-none">
+        <div class="flex items-center gap-1.5">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 via-rose-500 to-amber-400 text-slate-950 font-black text-xs shadow-md shadow-pink-500/30">
+            🎬
+          </span>
+          <h1 class="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-white via-pink-100 to-amber-200 bg-clip-text text-transparent">
+            CineSpotle
+          </h1>
+        </div>
+        <span id="header-mode-label" class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 -mt-0.5">
+          Daily Challenge
+        </span>
+      </div>
+
+      <!-- Right: Stats, Settings Gear, How to Play -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-open-stats" type="button" aria-label="View Statistics" title="Statistics"
+          class="p-2.5 rounded-xl bg-[#131929] hover:bg-[#1b2338] active:scale-95 border border-slate-800 text-slate-200 transition cursor-pointer">
+          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </button>
+        <button id="btn-open-settings" type="button" aria-label="Open Settings" title="Settings"
+          class="p-2.5 rounded-xl bg-[#131929] hover:bg-[#1b2338] active:scale-95 border border-slate-800 text-slate-200 transition cursor-pointer">
+          <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        <button id="btn-open-help" type="button" aria-label="How to Play" title="How to Play"
+          class="p-2.5 rounded-xl bg-[#131929] hover:bg-[#1b2338] active:scale-95 border border-slate-800 text-slate-200 transition cursor-pointer">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Container -->
+  <main class="max-w-3xl mx-auto px-3 sm:px-5 pt-3 pb-24">
+
+    <!-- Sub-Header Bar: Hint, Guess X of 10 Progress Bar, Give Up / New Movie -->
+    <section class="bg-[#131929] border border-slate-800/90 rounded-2xl p-3 mb-3.5 shadow-lg">
+      <div class="flex items-center justify-between gap-2">
+        <!-- Left: Hint Button -->
+        <button id="btn-open-hint" type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-bold transition cursor-pointer">
+          <span>💡</span>
+          <span>Hint</span>
+          <span id="hint-count-pill" class="px-1.5 py-0.5 text-[10px] rounded-full bg-amber-400/20 text-amber-200">0/4</span>
+        </button>
+
+        <!-- Center: Guess Counter & 10-Segment Bar -->
+        <div class="flex-1 max-w-xs mx-auto text-center">
+          <div id="guess-counter-text" class="text-xs sm:text-sm font-extrabold tracking-wide text-slate-100 mb-1.5">
+            Guess 1 of 10
+          </div>
+          <div id="progress-segments" class="grid grid-cols-10 gap-1" aria-label="Guess progress"></div>
+        </div>
+
+        <!-- Right: Give Up & Endless New Movie Buttons -->
+        <div class="flex items-center gap-1.5">
+          <button id="btn-new-movie" type="button" title="Shuffle New Movie"
+            class="hidden items-center gap-1 px-2.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 active:scale-95 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-bold transition cursor-pointer">
+            <span>🎲</span>
+            <span class="hidden sm:inline">New</span>
+          </button>
+          <button id="btn-give-up" type="button"
+            class="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 border border-rose-500/40 text-rose-300 text-xs sm:text-sm font-bold transition cursor-pointer">
+            <span>🏳️</span>
+            <span>Give up</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Active Filter & Mode Pill Row -->
+      <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-slate-500 font-medium">Pool:</span>
+          <button type="button" data-quick-industry="All" class="quick-ind-btn px-2 py-0.5 rounded-md font-semibold transition cursor-pointer">All (104)</button>
+          <button type="button" data-quick-industry="Hollywood" class="quick-ind-btn px-2 py-0.5 rounded-md font-semibold transition cursor-pointer">Hollywood</button>
+          <button type="button" data-quick-industry="Bollywood" class="quick-ind-btn px-2 py-0.5 rounded-md font-semibold transition cursor-pointer">Bollywood</button>
+          <button type="button" data-quick-industry="Kannada" class="quick-ind-btn px-2 py-0.5 rounded-md font-semibold transition cursor-pointer">Kannada</button>
+          <button type="button" data-quick-industry="Pan-India" class="quick-ind-btn px-2 py-0.5 rounded-md font-semibold transition cursor-pointer">Pan-India</button>
+        </div>
+        <span id="tmdb-status-pill" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">
+          TMDB Live Connected
+        </span>
+      </div>
+    </section>
+
+    <!-- Game Over / Victory / Reveal Banner (Hidden until Win or Give Up) -->
+    <section id="result-banner" class="hidden mb-4 rounded-2xl bg-gradient-to-br from-[#161f36] via-[#131929] to-[#1e152c] border border-pink-500/40 p-4 sm:p-5 shadow-2xl guess-card-enter">
+      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <div id="result-poster" class="w-24 h-36 rounded-xl overflow-hidden shadow-lg shrink-0 border border-white/15"></div>
+        <div class="flex-1 text-center sm:text-left">
+          <div id="result-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-1.5"></div>
+          <h2 id="result-title" class="text-xl sm:text-2xl font-black text-white leading-tight"></h2>
+          <p id="result-meta" class="text-xs sm:text-sm text-slate-300 mt-1 font-medium"></p>
+          <p id="result-tagline" class="text-xs italic text-slate-400 mt-1.5"></p>
+          <div id="result-credits" class="mt-2.5 flex flex-wrap justify-center sm:justify-start gap-1.5 text-[11px] text-slate-300"></div>
+
+          <div class="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+            <button id="btn-share-result" type="button"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-lg shadow-pink-500/25 transition cursor-pointer">
+              <span>📋</span>
+              <span>Copy Share Result</span>
+            </button>
+            <button id="btn-play-another" type="button"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1b2338] hover:bg-[#25304d] active:scale-95 border border-slate-700 text-slate-100 font-bold text-xs sm:text-sm transition cursor-pointer">
+              <span>🎬</span>
+              <span>Play Another Movie</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search Input & Instant Dropdown -->
+    <section id="search-section" class="relative mb-4 z-20">
+      <div class="relative flex items-center">
+        <span class="absolute left-3.5 text-slate-400 pointer-events-none">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+        </span>
+        <input id="movie-search-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          placeholder="Search for a film (e.g. Inception, Kantara, 3 Idiots, RRR)..."
+          class="w-full pl-11 pr-24 py-3.5 rounded-2xl bg-[#131929] border-2 border-slate-700/90 focus:border-pink-500 focus:outline-none text-sm sm:text-base text-white placeholder-slate-400 shadow-lg transition" />
+        <div class="absolute right-2 flex items-center gap-1">
+          <button id="btn-clear-search" type="button" aria-label="Clear search"
+            class="hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer">
+            ✕
+          </button>
+          <button id="btn-browse-all" type="button"
+            class="px-2.5 py-1.5 rounded-xl bg-[#1b2338] hover:bg-pink-500/20 border border-slate-700 hover:border-pink-500/40 text-xs font-bold text-slate-200 transition cursor-pointer">
+            Browse
+          </button>
+        </div>
+      </div>
+
+      <!-- Instant Search Dropdown -->
+      <div id="search-dropdown" class="hidden absolute left-0 right-0 mt-1.5 max-h-80 overflow-y-auto rounded-2xl bg-[#131929] border border-slate-700 shadow-2xl divide-y divide-slate-800/80">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- Empty State Prompt (Shown before first guess) -->
+    <section id="empty-state" class="rounded-2xl bg-[#131929]/70 border border-dashed border-slate-800 p-6 sm:p-8 text-center">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500/20 to-amber-500/20 border border-pink-500/30 flex items-center justify-center mx-auto mb-3 text-2xl">
+        🍿
+      </div>
+      <h2 class="text-base sm:text-lg font-extrabold text-white">Guess the Mystery Film in 10 Tries</h2>
+      <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto mt-1.5 leading-relaxed">
+        Search and select any movie above. Each guess reveals clues across <span class="text-slate-200 font-semibold">Genres, Year, Box Office, Score, Rating, Studio, Music, Director</span>, and <span class="text-slate-200 font-semibold">Cast</span>.
+      </p>
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-semibold">
+        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">✓ Exact Match</span>
+        <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40">≈ Close / Partial</span>
+        <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">↑↓ Higher / Newer or Lower / Older</span>
+      </div>
+    </section>
+
+    <!-- Guesses Stack (Newest Guess on Top) -->
+    <section id="guesses-container" class="space-y-4"></section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast-banner" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-opacity duration-200">
+    <div id="toast-message" class="px-4 py-2.5 rounded-xl bg-slate-900/95 border border-pink-500/50 text-white text-xs sm:text-sm font-bold shadow-2xl"></div>
+  </div>
+
+  <!-- Left Navigation Drawer Overlay -->
+  <div id="drawer-backdrop" class="hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-xs"></div>
+  <aside id="nav-drawer" class="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[82vw] bg-[#131929] border-r border-slate-800 transform -translate-x-full transition-transform duration-250 ease-out flex flex-col">
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🎬</span>
+        <span class="font-black text-base text-white">CineSpotle Menu</span>
+      </div>
+      <button id="btn-close-drawer" type="button" aria-label="Close Menu"
+        class="p-2 rounded-xl bg-[#1b2338] text-slate-300 hover:text-white cursor-pointer">
+        ✕
+      </button>
+    </div>
+
+    <div class="p-4 space-y-5 overflow-y-auto flex-1">
+      <div>
+        <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Select Film Industry</h3>
+        <div class="space-y-1.5" id="drawer-industry-list">
+          <button type="button" data-drawer-industry="All" class="drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer">
+            <span>🌍 All Industries</span>
+            <span class="text-xs opacity-75">104</span>
+          </button>
+          <button type="button" data-drawer-industry="Hollywood" class="drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer">
+            <span>🎥 Hollywood</span>
+            <span class="text-xs opacity-75">28</span>
+          </button>
+          <button type="button" data-drawer-industry="Bollywood" class="drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer">
+            <span>🇮🇳 Bollywood</span>
+            <span class="text-xs opacity-75">28</span>
+          </button>
+          <button type="button" data-drawer-industry="Kannada" class="drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer">
+            <span>🦁 Kannada / Sandalwood</span>
+            <span class="text-xs opacity-75">28</span>
+          </button>
+          <button type="button" data-drawer-industry="Pan-India" class="drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer">
+            <span>🔥 Pan-India / South</span>
+            <span class="text-xs opacity-75">20</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Game Mode</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" data-drawer-mode="daily" class="drawer-mode-item px-3 py-2.5 rounded-xl text-xs font-extrabold border transition cursor-pointer text-center">
+            📅 Daily
+          </button>
+          <button type="button" data-drawer-mode="endless" class="drawer-mode-item px-3 py-2.5 rounded-xl text-xs font-extrabold border transition cursor-pointer text-center">
+            ♾️ Endless
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-800 space-y-2">
+        <button id="drawer-link-stats" type="button" class="w-full text-left px-3 py-2.5 rounded-xl bg-[#1b2338] hover:bg-slate-800 text-sm font-semibold text-slate-200 transition cursor-pointer">
+          📊 View My Stats
+        </button>
+        <button id="drawer-link-settings" type="button" class="w-full text-left px-3 py-2.5 rounded-xl bg-[#1b2338] hover:bg-slate-800 text-sm font-semibold text-slate-200 transition cursor-pointer">
+          ⚙️ Settings & TMDB API
+        </button>
+        <button id="drawer-link-help" type="button" class="w-full text-left px-3 py-2.5 rounded-xl bg-[#1b2338] hover:bg-slate-800 text-sm font-semibold text-slate-200 transition cursor-pointer">
+          ❓ How to Play
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MODAL: Settings -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+    <div class="w-full max-w-md rounded-2xl bg-[#131929] border border-slate-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <span>⚙️</span> <span>Game Settings</span>
+        </h2>
+        <button type="button" data-close-modal="modal-settings" class="p-2 rounded-xl bg-[#1b2338] text-slate-300 hover:text-white cursor-pointer">✕</button>
+      </div>
+
+      <div class="p-4 space-y-4 overflow-y-auto text-sm">
+        <!-- Industry Filter -->
+        <div>
+          <label for="setting-industry" class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Industry Pool</label>
+          <select id="setting-industry" class="w-full px-3 py-2.5 rounded-xl bg-[#1b2338] border border-slate-700 text-white font-semibold focus:border-pink-500 focus:outline-none">
+            <option value="All">All Industries (104 Movies)</option>
+            <option value="Hollywood">Hollywood (28 Movies)</option>
+            <option value="Bollywood">Bollywood (28 Movies)</option>
+            <option value="Kannada">Kannada / Sandalwood (28 Movies)</option>
+            <option value="Pan-India">Pan-India / South (20 Movies)</option>
+          </select>
+        </div>
+
+        <!-- Game Mode -->
+        <div>
+          <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Game Mode</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="setting-mode-daily" class="px-3 py-2.5 rounded-xl border text-xs font-extrabold transition cursor-pointer">
+              📅 Daily Challenge
+            </button>
+            <button type="button" id="setting-mode-endless" class="px-3 py-2.5 rounded-xl border text-xs font-extrabold transition cursor-pointer">
+              ♾️ Endless Practice
+            </button>
+          </div>
+        </div>
+
+        <!-- Visual Theme -->
+        <div>
+          <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Visual Theme</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="setting-theme-marquee" class="px-3 py-2.5 rounded-xl border text-xs font-extrabold transition cursor-pointer">
+              💡 KaunsiFilm Marquee
+            </button>
+            <button type="button" id="setting-theme-midnight" class="px-3 py-2.5 rounded-xl border text-xs font-extrabold transition cursor-pointer">
+              🌌 Spotle Midnight
+            </button>
+          </div>
+        </div>
+
+        <!-- Optional TMDB v3 API Key -->
+        <div class="pt-2 border-t border-slate-800">
+          <label for="setting-tmdb-key" class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+            Optional TMDB v3 API Key (Global Search)
+          </label>
+          <p class="text-[11px] text-slate-400 mb-2">
+            Works 100% offline with 104 curated films. Add a free TMDB v3 key to search millions of global titles.
+          </p>
+          <div class="flex gap-2">
+            <input id="setting-tmdb-key" type="password" placeholder="Paste TMDB v3 API key..."
+              class="flex-1 px-3 py-2 rounded-xl bg-[#1b2338] border border-slate-700 text-xs text-white focus:border-pink-500 focus:outline-none" />
+            <button id="btn-save-tmdb" type="button" class="px-3 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold cursor-pointer">
+              Save
+            </button>
+            <button id="btn-clear-tmdb" type="button" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Reset Stats -->
+        <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-bold text-slate-200">Reset Local Statistics</div>
+            <div class="text-[11px] text-slate-400">Clears streak and guess history</div>
+          </div>
+          <button id="btn-reset-stats" type="button" class="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-bold cursor-pointer">
+            Reset Stats
+          </button>
+        </div>
+        <div id="reset-confirm-box" class="hidden p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-xs">
+          <p class="text-rose-200 font-semibold mb-2">Are you sure you want to reset all saved stats?</p>
+          <div class="flex gap-2">
+            <button id="btn-confirm-reset" type="button" class="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-bold cursor-pointer">Yes, Reset</button>
+            <button id="btn-cancel-reset" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold cursor-pointer">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Progressive Hints -->
+  <div id="modal-hint" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+    <div class="w-full max-w-md rounded-2xl bg-[#131929] border border-slate-700 shadow-2xl overflow-hidden">
+      <div class="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-black text-amber-300 flex items-center gap-2">
+          <span>💡</span> <span>Progressive Clues</span>
+        </h2>
+        <button type="button" data-close-modal="modal-hint" class="p-2 rounded-xl bg-[#1b2338] text-slate-300 hover:text-white cursor-pointer">✕</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <p class="text-xs text-slate-400">Unlock clues anytime without losing a guess.</p>
+        <div id="hints-list" class="space-y-2.5"></div>
+        <button id="btn-reveal-next-hint" type="button"
+          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg cursor-pointer transition">
+          Reveal Next Clue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: How to Play -->
+  <div id="modal-help" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+    <div class="w-full max-w-md rounded-2xl bg-[#131929] border border-slate-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <span>❓</span> <span>How to Play CineSpotle</span>
+        </h2>
+        <button type="button" data-close-modal="modal-help" class="p-2 rounded-xl bg-[#1b2338] text-slate-300 hover:text-white cursor-pointer">✕</button>
+      </div>
+      <div class="p-4 space-y-3.5 overflow-y-auto text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <p>Identify the secret movie in <strong class="text-white">10 guesses or fewer</strong>. After each guess, every attribute tile flips to show how close you are:</p>
+        <div class="space-y-2">
+          <div class="p-2.5 rounded-xl tile-exact border">
+            <strong class="text-emerald-300">✓ Green (Exact Match):</strong> This attribute matches the secret movie exactly.
+          </div>
+          <div class="p-2.5 rounded-xl tile-close border">
+            <strong class="text-amber-300">≈ Gold (Close / Partial Match):</strong>
+            <ul class="list-disc list-inside mt-1 text-xs text-slate-200 space-y-0.5">
+              <li><strong>Genres:</strong> Shares at least 1 genre.</li>
+              <li><strong>Year:</strong> Within ±5 years of the target film.</li>
+              <li><strong>Box Office:</strong> Within ±25% of worldwide gross.</li>
+              <li><strong>Score:</strong> Within ±7 points out of 100.</li>
+              <li><strong>Rated:</strong> Adjacent age rating (e.g., U & UA, PG & PG-13).</li>
+              <li><strong>Studio / Music:</strong> Sister studio or shared composer.</li>
+              <li><strong>Cast:</strong> Actor appears in a different role (Lead ↔ Support).</li>
+            </ul>
+          </div>
+          <div class="p-2.5 rounded-xl tile-miss border">
+            <strong class="text-slate-200">↑ / ↓ Directional Arrows:</strong>
+            <span class="block text-xs text-slate-400 mt-0.5"><strong>↑</strong> means the mystery film is newer, higher grossing, or higher rated. <strong>↓</strong> means older or lower.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Stats -->
+  <div id="modal-stats" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+    <div class="w-full max-w-md rounded-2xl bg-[#131929] border border-slate-700 shadow-2xl overflow-hidden">
+      <div class="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <span>📊</span> <span>Your CineSpotle Stats</span>
+        </h2>
+        <button type="button" data-close-modal="modal-stats" class="p-2 rounded-xl bg-[#1b2338] text-slate-300 hover:text-white cursor-pointer">✕</button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <div class="p-2.5 rounded-xl bg-[#1b2338] border border-slate-800">
+            <div id="stat-played" class="text-xl font-black text-white">0</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Played</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-[#1b2338] border border-slate-800">
+            <div id="stat-winpct" class="text-xl font-black text-emerald-400">0%</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Win %</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-[#1b2338] border border-slate-800">
+            <div id="stat-streak" class="text-xl font-black text-amber-400">0</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Streak</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-[#1b2338] border border-slate-800">
+            <div id="stat-maxstreak" class="text-xl font-black text-pink-400">0</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Best</div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Guess Distribution</h3>
+          <div id="stat-distribution" class="space-y-1.5 text-xs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Give Up Confirmation -->
+  <div id="modal-giveup" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+    <div class="w-full max-w-sm rounded-2xl bg-[#131929] border border-slate-700 p-5 shadow-2xl text-center">
+      <div class="text-3xl mb-2">🏳️</div>
+      <h3 class="text-lg font-black text-white">Reveal the Secret Movie?</h3>
+      <p class="text-xs sm:text-sm text-slate-400 mt-1.5">This will end the current round and reveal the answer.</p>
+      <div class="mt-4 grid grid-cols-2 gap-2.5">
+        <button id="btn-cancel-giveup" type="button" class="py-2.5 rounded-xl bg-[#1b2338] hover:bg-slate-800 text-slate-200 font-bold text-xs sm:text-sm cursor-pointer">
+          Keep Guessing
+        </button>
+        <button id="btn-confirm-giveup" type="button" class="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm cursor-pointer">
+          Reveal Movie
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON Movie Database (104 Curated Films across Hollywood, Bollywood, Kannada, and Pan-India) -->
+  <script type="application/json" id="movies-json">
+  [
+    {"id":"hw-01","title":"Inception","industry":"Hollywood","year":2010,"genres":["Action","Sci-Fi","Thriller"],"boxOfficeDisplay":"$839M","boxOfficeUsdM":839,"score":88,"rated":"PG-13","studio":"Warner Bros.","music":"Hans Zimmer","director":"Christopher Nolan","lead":"Leonardo DiCaprio","support":["Joseph Gordon-Levitt","Elliot Page","Tom Hardy"],"tagline":"Your mind is the scene of the crime.","colors":["#0f172a","#38bdf8"]},
+    {"id":"hw-02","title":"The Dark Knight","industry":"Hollywood","year":2008,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"$1006M","boxOfficeUsdM":1006,"score":90,"rated":"PG-13","studio":"Warner Bros.","music":"Hans Zimmer","director":"Christopher Nolan","lead":"Christian Bale","support":["Heath Ledger","Aaron Eckhart","Michael Caine"],"tagline":"Why so serious?","colors":["#090d16","#3b82f6"]},
+    {"id":"hw-03","title":"Interstellar","industry":"Hollywood","year":2014,"genres":["Adventure","Drama","Sci-Fi"],"boxOfficeDisplay":"$731M","boxOfficeUsdM":731,"score":87,"rated":"PG-13","studio":"Paramount Pictures","music":"Hans Zimmer","director":"Christopher Nolan","lead":"Matthew McConaughey","support":["Anne Hathaway","Jessica Chastain","Michael Caine"],"tagline":"Mankind was born on Earth. It was never meant to die here.","colors":["#1e1b4b","#f59e0b"]},
+    {"id":"hw-04","title":"Oppenheimer","industry":"Hollywood","year":2023,"genres":["Biography","Drama","History"],"boxOfficeDisplay":"$975M","boxOfficeUsdM":975,"score":84,"rated":"R","studio":"Universal Pictures","music":"Ludwig Goransson","director":"Christopher Nolan","lead":"Cillian Murphy","support":["Emily Blunt","Matt Damon","Robert Downey Jr."],"tagline":"The world forever changes.","colors":["#431407","#f97316"]},
+    {"id":"hw-05","title":"Dune: Part Two","industry":"Hollywood","year":2024,"genres":["Action","Adventure","Sci-Fi"],"boxOfficeDisplay":"$714M","boxOfficeUsdM":714,"score":86,"rated":"PG-13","studio":"Warner Bros.","music":"Hans Zimmer","director":"Denis Villeneuve","lead":"Timothee Chalamet","support":["Zendaya","Rebecca Ferguson","Javier Bardem"],"tagline":"Long live the fighters.","colors":["#78350f","#fbbf24"]},
+    {"id":"hw-06","title":"L.A. Confidential","industry":"Hollywood","year":1997,"genres":["Crime","Drama","Mystery"],"boxOfficeDisplay":"$126M","boxOfficeUsdM":126,"score":82,"rated":"R","studio":"Warner Bros.","music":"Jerry Goldsmith","director":"Curtis Hanson","lead":"Kevin Spacey","support":["Russell Crowe","Guy Pearce","Kim Basinger"],"tagline":"Everything is suspect... everyone is for sale.","colors":["#1f2937","#eab308"]},
+    {"id":"hw-07","title":"Schindler's List","industry":"Hollywood","year":1993,"genres":["Biography","Drama","History"],"boxOfficeDisplay":"$322M","boxOfficeUsdM":322,"score":90,"rated":"R","studio":"Universal Pictures","music":"John Williams","director":"Steven Spielberg","lead":"Liam Neeson","support":["Ben Kingsley","Ralph Fiennes","Caroline Goodall"],"tagline":"Whoever saves one life, saves the world entire.","colors":["#18181b","#ef4444"]},
+    {"id":"hw-08","title":"Pulp Fiction","industry":"Hollywood","year":1994,"genres":["Crime","Drama"],"boxOfficeDisplay":"$214M","boxOfficeUsdM":214,"score":89,"rated":"R","studio":"Miramax","music":"Various Artists","director":"Quentin Tarantino","lead":"John Travolta","support":["Samuel L. Jackson","Uma Thurman","Bruce Willis"],"tagline":"Just because you are a character doesn't mean you have character.","colors":["#450a0a","#facc15"]},
+    {"id":"hw-09","title":"Parasite","industry":"Hollywood","year":2019,"genres":["Comedy","Drama","Thriller"],"boxOfficeDisplay":"$262M","boxOfficeUsdM":262,"score":85,"rated":"R","studio":"CJ Entertainment","music":"Jung Jae-il","director":"Bong Joon-ho","lead":"Song Kang-ho","support":["Lee Sun-kyun","Cho Yeo-jeong","Choi Woo-shik"],"tagline":"Act like you own the place.","colors":["#064e3b","#34d399"]},
+    {"id":"hw-10","title":"The Godfather","industry":"Hollywood","year":1972,"genres":["Crime","Drama"],"boxOfficeDisplay":"$250M","boxOfficeUsdM":250,"score":92,"rated":"R","studio":"Paramount Pictures","music":"Nino Rota","director":"Francis Ford Coppola","lead":"Marlon Brando","support":["Al Pacino","James Caan","Robert Duvall"],"tagline":"An offer you can't refuse.","colors":["#1c1917","#dc2626"]},
+    {"id":"hw-11","title":"Fight Club","industry":"Hollywood","year":1999,"genres":["Drama"],"boxOfficeDisplay":"$101M","boxOfficeUsdM":101,"score":88,"rated":"R","studio":"20th Century Fox","music":"The Dust Brothers","director":"David Fincher","lead":"Brad Pitt","support":["Edward Norton","Helena Bonham Carter","Meat Loaf"],"tagline":"Mischief. Mayhem. Soap.","colors":["#500724","#f472b6"]},
+    {"id":"hw-12","title":"Forrest Gump","industry":"Hollywood","year":1994,"genres":["Drama","Romance"],"boxOfficeDisplay":"$678M","boxOfficeUsdM":678,"score":88,"rated":"PG-13","studio":"Paramount Pictures","music":"Alan Silvestri","director":"Robert Zemeckis","lead":"Tom Hanks","support":["Robin Wright","Gary Sinise","Sally Field"],"tagline":"Life is like a box of chocolates.","colors":["#1e3a8a","#93c5fd"]},
+    {"id":"hw-13","title":"The Matrix","industry":"Hollywood","year":1999,"genres":["Action","Sci-Fi"],"boxOfficeDisplay":"$467M","boxOfficeUsdM":467,"score":87,"rated":"R","studio":"Warner Bros.","music":"Don Davis","director":"Lana Wachowski","lead":"Keanu Reeves","support":["Laurence Fishburne","Carrie-Anne Moss","Hugo Weaving"],"tagline":"Welcome to the Real World.","colors":["#052e16","#22c55e"]},
+    {"id":"hw-14","title":"Gladiator","industry":"Hollywood","year":2000,"genres":["Action","Adventure","Drama"],"boxOfficeDisplay":"$465M","boxOfficeUsdM":465,"score":85,"rated":"R","studio":"DreamWorks","music":"Hans Zimmer","director":"Ridley Scott","lead":"Russell Crowe","support":["Joaquin Phoenix","Connie Nielsen","Oliver Reed"],"tagline":"What we do in life echoes in eternity.","colors":["#451a03","#d97706"]},
+    {"id":"hw-15","title":"Titanic","industry":"Hollywood","year":1997,"genres":["Drama","Romance"],"boxOfficeDisplay":"$2264M","boxOfficeUsdM":2264,"score":79,"rated":"PG-13","studio":"Paramount Pictures","music":"James Horner","director":"James Cameron","lead":"Leonardo DiCaprio","support":["Kate Winslet","Billy Zane","Kathy Bates"],"tagline":"Nothing on Earth could come between them.","colors":["#0c4a6e","#38bdf8"]},
+    {"id":"hw-16","title":"Avatar","industry":"Hollywood","year":2009,"genres":["Action","Adventure","Fantasy"],"boxOfficeDisplay":"$2923M","boxOfficeUsdM":2923,"score":79,"rated":"PG-13","studio":"20th Century Fox","music":"James Horner","director":"James Cameron","lead":"Sam Worthington","support":["Zoe Saldana","Sigourney Weaver","Stephen Lang"],"tagline":"Enter the world of Pandora.","colors":["#065f46","#2dd4bf"]},
+    {"id":"hw-17","title":"Avengers: Endgame","industry":"Hollywood","year":2019,"genres":["Action","Adventure","Sci-Fi"],"boxOfficeDisplay":"$2799M","boxOfficeUsdM":2799,"score":84,"rated":"PG-13","studio":"Marvel Studios","music":"Alan Silvestri","director":"Anthony Russo","lead":"Robert Downey Jr.","support":["Chris Evans","Mark Ruffalo","Scarlett Johansson"],"tagline":"Avenge the fallen.","colors":["#311042","#c084fc"]},
+    {"id":"hw-18","title":"Spider-Man: Across the Spider-Verse","industry":"Hollywood","year":2023,"genres":["Animation","Action","Adventure"],"boxOfficeDisplay":"$690M","boxOfficeUsdM":690,"score":86,"rated":"PG","studio":"Sony Pictures","music":"Daniel Pemberton","director":"Joaquim Dos Santos","lead":"Shameik Moore","support":["Hailee Steinfeld","Oscar Isaac","Jake Johnson"],"tagline":"It's how you wear the mask that matters.","colors":["#4c0519","#fb7185"]},
+    {"id":"hw-19","title":"Joker","industry":"Hollywood","year":2019,"genres":["Crime","Drama","Thriller"],"boxOfficeDisplay":"$1078M","boxOfficeUsdM":1078,"score":84,"rated":"R","studio":"Warner Bros.","music":"Hildur Gudnadottir","director":"Todd Phillips","lead":"Joaquin Phoenix","support":["Robert De Niro","Zazie Beetz","Frances Conroy"],"tagline":"Put on a happy face.","colors":["#3f1d2e","#facc15"]},
+    {"id":"hw-20","title":"Whiplash","industry":"Hollywood","year":2014,"genres":["Drama","Music"],"boxOfficeDisplay":"$49M","boxOfficeUsdM":49,"score":85,"rated":"R","studio":"Sony Pictures","music":"Justin Hurwitz","director":"Damien Chazelle","lead":"Miles Teller","support":["J.K. Simmons","Paul Reiser","Melissa Benoist"],"tagline":"The road to greatness can take you to the edge.","colors":["#1c1917","#f59e0b"]},
+    {"id":"hw-21","title":"Se7en","industry":"Hollywood","year":1995,"genres":["Crime","Drama","Mystery"],"boxOfficeDisplay":"$327M","boxOfficeUsdM":327,"score":86,"rated":"R","studio":"New Line Cinema","music":"Howard Shore","director":"David Fincher","lead":"Brad Pitt","support":["Morgan Freeman","Gwyneth Paltrow","Kevin Spacey"],"tagline":"Seven deadly sins. Seven ways to die.","colors":["#171717","#a3e635"]},
+    {"id":"hw-22","title":"Goodfellas","industry":"Hollywood","year":1990,"genres":["Biography","Crime","Drama"],"boxOfficeDisplay":"$47M","boxOfficeUsdM":47,"score":87,"rated":"R","studio":"Warner Bros.","music":"Various Artists","director":"Martin Scorsese","lead":"Ray Liotta","support":["Robert De Niro","Joe Pesci","Lorraine Bracco"],"tagline":"Three decades of life in the Mafia.","colors":["#292524","#ef4444"]},
+    {"id":"hw-23","title":"The Shawshank Redemption","industry":"Hollywood","year":1994,"genres":["Drama"],"boxOfficeDisplay":"$73M","boxOfficeUsdM":73,"score":93,"rated":"R","studio":"Castle Rock","music":"Thomas Newman","director":"Frank Darabont","lead":"Tim Robbins","support":["Morgan Freeman","Bob Gunton","William Sadler"],"tagline":"Fear can hold you prisoner. Hope can set you free.","colors":["#1e293b","#60a5fa"]},
+    {"id":"hw-24","title":"Mad Max: Fury Road","industry":"Hollywood","year":2015,"genres":["Action","Adventure","Sci-Fi"],"boxOfficeDisplay":"$380M","boxOfficeUsdM":380,"score":81,"rated":"R","studio":"Warner Bros.","music":"Junkie XL","director":"George Miller","lead":"Tom Hardy","support":["Charlize Theron","Nicholas Hoult","Hugh Keays-Byrne"],"tagline":"What a lovely day.","colors":["#7c2d12","#fb923c"]},
+    {"id":"hw-25","title":"Top Gun: Maverick","industry":"Hollywood","year":2022,"genres":["Action","Drama"],"boxOfficeDisplay":"$1495M","boxOfficeUsdM":1495,"score":83,"rated":"PG-13","studio":"Paramount Pictures","music":"Harold Faltermeyer","director":"Joseph Kosinski","lead":"Tom Cruise","support":["Miles Teller","Jennifer Connelly","Jon Hamm"],"tagline":"Feel the need... The need for speed.","colors":["#1e3a8a","#f97316"]},
+    {"id":"hw-26","title":"Jurassic Park","industry":"Hollywood","year":1993,"genres":["Action","Adventure","Sci-Fi"],"boxOfficeDisplay":"$1046M","boxOfficeUsdM":1046,"score":82,"rated":"PG-13","studio":"Universal Pictures","music":"John Williams","director":"Steven Spielberg","lead":"Sam Neill","support":["Laura Dern","Jeff Goldblum","Richard Attenborough"],"tagline":"An adventure 65 million years in the making.","colors":["#14532d","#facc15"]},
+    {"id":"hw-27","title":"The Prestige","industry":"Hollywood","year":2006,"genres":["Drama","Mystery","Sci-Fi"],"boxOfficeDisplay":"$109M","boxOfficeUsdM":109,"score":85,"rated":"PG-13","studio":"Warner Bros.","music":"David Julyan","director":"Christopher Nolan","lead":"Christian Bale","support":["Hugh Jackman","Scarlett Johansson","Michael Caine"],"tagline":"Are you watching closely?","colors":["#0f172a","#818cf8"]},
+    {"id":"hw-28","title":"Shutter Island","industry":"Hollywood","year":2010,"genres":["Mystery","Thriller"],"boxOfficeDisplay":"$294M","boxOfficeUsdM":294,"score":82,"rated":"R","studio":"Paramount Pictures","music":"Robbie Robertson","director":"Martin Scorsese","lead":"Leonardo DiCaprio","support":["Mark Ruffalo","Ben Kingsley","Michelle Williams"],"tagline":"Someone is missing.","colors":["#1e293b","#94a3b8"]},
+
+    {"id":"bw-01","title":"Goliyon Ki Raasleela Ram-Leela","industry":"Bollywood","year":2013,"genres":["Drama","Romance"],"boxOfficeDisplay":"~₹220 Cr","boxOfficeUsdM":36,"score":65,"rated":"UA","studio":"SLB Films","music":"Sanjay Leela Bhansali","director":"Sanjay Leela Bhansali","lead":"Ranveer Singh","support":["Deepika Padukone","Supriya Pathak","Richa Chadha"],"tagline":"A passionate tale of love and war in Gujarat.","colors":["#7f1d1d","#f59e0b"]},
+    {"id":"bw-02","title":"Ghajini","industry":"Bollywood","year":2008,"genres":["Action","Drama","Thriller"],"boxOfficeDisplay":"~₹232 Cr","boxOfficeUsdM":52,"score":73,"rated":"UA","studio":"Geetha Arts","music":"A.R. Rahman","director":"A.R. Murugadoss","lead":"Aamir Khan","support":["Asin","Jiah Khan","Pradeep Rawat"],"tagline":"A man with short-term memory loss hunts his fiancee's killer.","colors":["#3f2e1d","#d97706"]},
+    {"id":"bw-03","title":"3 Idiots","industry":"Bollywood","year":2009,"genres":["Comedy","Drama"],"boxOfficeDisplay":"~₹460 Cr","boxOfficeUsdM":95,"score":84,"rated":"UA","studio":"Vinod Chopra Films","music":"Shantanu Moitra","director":"Rajkumar Hirani","lead":"Aamir Khan","support":["R. Madhavan","Sharman Joshi","Kareena Kapoor"],"tagline":"All is well.","colors":["#0369a1","#facc15"]},
+    {"id":"bw-04","title":"Dangal","industry":"Bollywood","year":2016,"genres":["Action","Biography","Drama"],"boxOfficeDisplay":"~₹2024 Cr","boxOfficeUsdM":302,"score":83,"rated":"U","studio":"Aamir Khan Productions","music":"Pritam","director":"Nitesh Tiwari","lead":"Aamir Khan","support":["Fatima Sana Shaikh","Sanya Malhotra","Sakshi Tanwar"],"tagline":"Mhaari chhoriyan chhoron se kam hain ke?","colors":["#7c2d12","#fbbf24"]},
+    {"id":"bw-05","title":"Lagaan","industry":"Bollywood","year":2001,"genres":["Drama","History","Sport"],"boxOfficeDisplay":"~₹66 Cr","boxOfficeUsdM":14,"score":81,"rated":"U","studio":"Aamir Khan Productions","music":"A.R. Rahman","director":"Ashutosh Gowariker","lead":"Aamir Khan","support":["Gracy Singh","Rachel Shelley","Paul Blackthorne"],"tagline":"Once upon a time in India.","colors":["#713f12","#fde047"]},
+    {"id":"bw-06","title":"Sholay","industry":"Bollywood","year":1975,"genres":["Action","Adventure","Drama"],"boxOfficeDisplay":"~₹35 Cr","boxOfficeUsdM":42,"score":81,"rated":"U","studio":"Sippy Films","music":"R.D. Burman","director":"Ramesh Sippy","lead":"Dharmendra","support":["Amitabh Bachchan","Sanjeev Kumar","Amjad Khan"],"tagline":"The greatest star-cast ever assembled.","colors":["#78350f","#f97316"]},
+    {"id":"bw-07","title":"Dilwale Dulhania Le Jayenge","industry":"Bollywood","year":1995,"genres":["Drama","Romance"],"boxOfficeDisplay":"~₹102 Cr","boxOfficeUsdM":32,"score":80,"rated":"U","studio":"Yash Raj Films","music":"Jatin-Lalit","director":"Aditya Chopra","lead":"Shah Rukh Khan","support":["Kajol","Amrish Puri","Anupam Kher"],"tagline":"Come... fall in love.","colors":["#065f46","#facc15"]},
+    {"id":"bw-08","title":"Zindagi Na Milegi Dobara","industry":"Bollywood","year":2011,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹153 Cr","boxOfficeUsdM":33,"score":82,"rated":"UA","studio":"Excel Entertainment","music":"Shankar-Ehsaan-Loy","director":"Zoya Akhtar","lead":"Hrithik Roshan","support":["Farhan Akhtar","Abhay Deol","Katrina Kaif"],"tagline":"You only live once.","colors":["#9a3412","#38bdf8"]},
+    {"id":"bw-09","title":"Bajrangi Bhaijaan","industry":"Bollywood","year":2015,"genres":["Action","Adventure","Drama"],"boxOfficeDisplay":"~₹918 Cr","boxOfficeUsdM":143,"score":81,"rated":"UA","studio":"Salman Khan Films","music":"Pritam","director":"Kabir Khan","lead":"Salman Khan","support":["Harshaali Malhotra","Nawazuddin Siddiqui","Kareena Kapoor"],"tagline":"A journey across borders fueled by compassion.","colors":["#1e3a8a","#f59e0b"]},
+    {"id":"bw-10","title":"PK","industry":"Bollywood","year":2014,"genres":["Comedy","Drama","Sci-Fi"],"boxOfficeDisplay":"~₹769 Cr","boxOfficeUsdM":125,"score":81,"rated":"UA","studio":"Vinod Chopra Films","music":"Shantanu Moitra","director":"Rajkumar Hirani","lead":"Aamir Khan","support":["Anushka Sharma","Sushant Singh Rajput","Saurabh Shukla"],"tagline":"Wrong number.","colors":["#4c1d95","#facc15"]},
+    {"id":"bw-11","title":"Padmaavat","industry":"Bollywood","year":2018,"genres":["Drama","History","Romance"],"boxOfficeDisplay":"~₹585 Cr","boxOfficeUsdM":90,"score":71,"rated":"UA","studio":"SLB Films","music":"Sanjay Leela Bhansali","director":"Sanjay Leela Bhansali","lead":"Deepika Padukone","support":["Ranveer Singh","Shahid Kapoor","Aditi Rao Hydari"],"tagline":"Honour and valour above all.","colors":["#881337","#fbbf24"]},
+    {"id":"bw-12","title":"Bajirao Mastani","industry":"Bollywood","year":2015,"genres":["Drama","History","Romance"],"boxOfficeDisplay":"~₹356 Cr","boxOfficeUsdM":55,"score":73,"rated":"UA","studio":"SLB Films","music":"Sanjay Leela Bhansali","director":"Sanjay Leela Bhansali","lead":"Ranveer Singh","support":["Deepika Padukone","Priyanka Chopra","Tanvi Azmi"],"tagline":"A warrior's love story that defied an empire.","colors":["#7c2d12","#fde047"]},
+    {"id":"bw-13","title":"Jawan","industry":"Bollywood","year":2023,"genres":["Action","Thriller"],"boxOfficeDisplay":"~₹1148 Cr","boxOfficeUsdM":139,"score":70,"rated":"UA","studio":"Red Chillies Entertainment","music":"Anirudh Ravichander","director":"Atlee","lead":"Shah Rukh Khan","support":["Nayanthara","Vijay Sethupathi","Deepika Padukone"],"tagline":"Ready ah?","colors":["#7f1d1d","#ef4444"]},
+    {"id":"bw-14","title":"Pathaan","industry":"Bollywood","year":2023,"genres":["Action","Adventure","Thriller"],"boxOfficeDisplay":"~₹1050 Cr","boxOfficeUsdM":128,"score":59,"rated":"UA","studio":"Yash Raj Films","music":"Vishal-Shekhar","director":"Siddharth Anand","lead":"Shah Rukh Khan","support":["Deepika Padukone","John Abraham","Dimple Kapadia"],"tagline":"Apni kursi ki peti baandh lijiye.","colors":["#0f172a","#f97316"]},
+    {"id":"bw-15","title":"Animal","industry":"Bollywood","year":2023,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹917 Cr","boxOfficeUsdM":110,"score":62,"rated":"A","studio":"T-Series","music":"Pritam","director":"Sandeep Reddy Vanga","lead":"Ranbir Kapoor","support":["Anil Kapoor","Bobby Deol","Rashmika Mandanna"],"tagline":"A son's fierce obsession to protect his father.","colors":["#1c1917","#dc2626"]},
+    {"id":"bw-16","title":"Andhadhun","industry":"Bollywood","year":2018,"genres":["Crime","Mystery","Thriller"],"boxOfficeDisplay":"~₹456 Cr","boxOfficeUsdM":65,"score":82,"rated":"UA","studio":"Viacom18 Studios","music":"Amit Trivedi","director":"Sriram Raghavan","lead":"Ayushmann Khurrana","support":["Tabu","Radhika Apte","Anil Dhawan"],"tagline":"What is life? It depends on the liver.","colors":["#18181b","#facc15"]},
+    {"id":"bw-17","title":"Drishyam","industry":"Bollywood","year":2015,"genres":["Crime","Drama","Mystery"],"boxOfficeDisplay":"~₹110 Cr","boxOfficeUsdM":17,"score":82,"rated":"UA","studio":"Viacom18 Studios","music":"Vishal Bhardwaj","director":"Nishikant Kamat","lead":"Ajay Devgn","support":["Tabu","Shriya Saran","Rajat Kapoor"],"tagline":"Visuals can be deceptive.","colors":["#1e293b","#38bdf8"]},
+    {"id":"bw-18","title":"Gangs of Wasseypur","industry":"Bollywood","year":2012,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹51 Cr","boxOfficeUsdM":10,"score":82,"rated":"A","studio":"Viacom18 Studios","music":"Sneha Khanwalkar","director":"Anurag Kashyap","lead":"Manoj Bajpayee","support":["Nawazuddin Siddiqui","Richa Chadha","Tigmanshu Dhulia"],"tagline":"Generations of coal-mafia vengeance.","colors":["#27272a","#f59e0b"]},
+    {"id":"bw-19","title":"Queen","industry":"Bollywood","year":2013,"genres":["Adventure","Comedy","Drama"],"boxOfficeDisplay":"~₹97 Cr","boxOfficeUsdM":16,"score":81,"rated":"UA","studio":"Viacom18 Studios","music":"Amit Trivedi","director":"Vikas Bahl","lead":"Kangana Ranaut","support":["Rajkummar Rao","Lisa Haydon","Mish Boyko"],"tagline":"She went on her honeymoon alone.","colors":["#831843","#f472b6"]},
+    {"id":"bw-20","title":"Barfi!","industry":"Bollywood","year":2012,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹175 Cr","boxOfficeUsdM":32,"score":81,"rated":"U","studio":"UTV Motion Pictures","music":"Pritam","director":"Anurag Basu","lead":"Ranbir Kapoor","support":["Priyanka Chopra","Ileana D'Cruz","Saurabh Shukla"],"tagline":"Don't worry, be Barfi!","colors":["#0c4a6e","#fbbf24"]},
+    {"id":"bw-21","title":"Tumbbad","industry":"Bollywood","year":2018,"genres":["Drama","Fantasy","Horror"],"boxOfficeDisplay":"~₹52 Cr","boxOfficeUsdM":7,"score":82,"rated":"A","studio":"Eros International","music":"Jesper Kyd","director":"Rahi Anil Barve","lead":"Sohum Shah","support":["Jyoti Malshe","Anita Date","Mohammad Samad"],"tagline":"The world has enough for everyone's need, not everyone's greed.","colors":["#450a0a","#f97316"]},
+    {"id":"bw-22","title":"12th Fail","industry":"Bollywood","year":2023,"genres":["Biography","Drama"],"boxOfficeDisplay":"~₹70 Cr","boxOfficeUsdM":8,"score":89,"rated":"U","studio":"Vinod Chopra Films","music":"Shantanu Moitra","director":"Vidhu Vinod Chopra","lead":"Vikrant Massey","support":["Medha Shankr","Anant V Joshi","Anshumaan Pushkar"],"tagline":"Restart.","colors":["#1e3a8a","#facc15"]},
+    {"id":"bw-23","title":"Chak De! India","industry":"Bollywood","year":2007,"genres":["Drama","Family","Sport"],"boxOfficeDisplay":"~₹109 Cr","boxOfficeUsdM":26,"score":81,"rated":"U","studio":"Yash Raj Films","music":"Salim-Sulaiman","director":"Shimit Amin","lead":"Shah Rukh Khan","support":["Vidya Malvade","Sagarika Ghatge","Shilpa Shukla"],"tagline":"Sattar minute hain tumhare paas.","colors":["#0c4a6e","#38bdf8"]},
+    {"id":"bw-24","title":"Rockstar","industry":"Bollywood","year":2011,"genres":["Drama","Music","Romance"],"boxOfficeDisplay":"~₹108 Cr","boxOfficeUsdM":23,"score":78,"rated":"UA","studio":"Eros International","music":"A.R. Rahman","director":"Imtiaz Ali","lead":"Ranbir Kapoor","support":["Nargis Fakhri","Shammi Kapoor","Kumud Mishra"],"tagline":"Heartbreak fuels an icon's music.","colors":["#4c0519","#fb7185"]},
+    {"id":"bw-25","title":"Yeh Jawaani Hai Deewani","industry":"Bollywood","year":2013,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹319 Cr","boxOfficeUsdM":55,"score":72,"rated":"UA","studio":"Dharma Productions","music":"Pritam","director":"Ayan Mukerji","lead":"Ranbir Kapoor","support":["Deepika Padukone","Aditya Roy Kapur","Kalki Koechlin"],"tagline":"Main udna chahta hoon, daudna chahta hoon.","colors":["#1e40af","#f472b6"]},
+    {"id":"bw-26","title":"Stree 2","industry":"Bollywood","year":2024,"genres":["Comedy","Horror"],"boxOfficeDisplay":"~₹874 Cr","boxOfficeUsdM":104,"score":71,"rated":"UA","studio":"Maddock Films","music":"Sachin-Jigar","director":"Amar Kaushik","lead":"Rajkummar Rao","support":["Shraddha Kapoor","Pankaj Tripathi","Abhishek Banerjee"],"tagline":"Sarkate ka aatank in Chanderi.","colors":["#3b0764","#e879f9"]},
+    {"id":"bw-27","title":"Kabhi Khushi Kabhie Gham","industry":"Bollywood","year":2001,"genres":["Drama","Family","Romance"],"boxOfficeDisplay":"~₹135 Cr","boxOfficeUsdM":29,"score":74,"rated":"U","studio":"Dharma Productions","music":"Jatin-Lalit","director":"Karan Johar","lead":"Shah Rukh Khan","support":["Kajol","Amitabh Bachchan","Hrithik Roshan"],"tagline":"It's all about loving your parents.","colors":["#78350f","#fde047"]},
+    {"id":"bw-28","title":"Swades","industry":"Bollywood","year":2004,"genres":["Drama"],"boxOfficeDisplay":"~₹34 Cr","boxOfficeUsdM":8,"score":82,"rated":"U","studio":"Ashutosh Gowariker Productions","music":"A.R. Rahman","director":"Ashutosh Gowariker","lead":"Shah Rukh Khan","support":["Gayatri Joshi","Kishori Ballal","Daya Shankar Pandey"],"tagline":"We, the people.","colors":["#14532d","#fbbf24"]},
+
+    {"id":"kn-01","title":"K.G.F: Chapter 1","industry":"Kannada","year":2018,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹250 Cr","boxOfficeUsdM":36,"score":82,"rated":"UA","studio":"Hombale Films","music":"Ravi Basrur","director":"Prashanth Neel","lead":"Yash","support":["Srinidhi Shetty","Ramachandra Raju","Anant Nag"],"tagline":"If you think you are bad, I am your dad.","colors":["#292524","#f59e0b"]},
+    {"id":"kn-02","title":"K.G.F: Chapter 2","industry":"Kannada","year":2022,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹1215 Cr","boxOfficeUsdM":155,"score":82,"rated":"UA","studio":"Hombale Films","music":"Ravi Basrur","director":"Prashanth Neel","lead":"Yash","support":["Sanjay Dutt","Raveena Tandon","Srinidhi Shetty"],"tagline":"Violence... Violence... Violence, I don't like it. I avoid. But violence likes me.","colors":["#1c1917","#eab308"]},
+    {"id":"kn-03","title":"Kantara","industry":"Kannada","year":2022,"genres":["Action","Adventure","Drama"],"boxOfficeDisplay":"~₹407 Cr","boxOfficeUsdM":50,"score":82,"rated":"UA","studio":"Hombale Films","music":"B. Ajaneesh Loknath","director":"Rishab Shetty","lead":"Rishab Shetty","support":["Sapthami Gowda","Kishore","Achyuth Kumar"],"tagline":"A divine folklore clash between man and nature.","colors":["#450a0a","#f97316"]},
+    {"id":"kn-04","title":"777 Charlie","industry":"Kannada","year":2022,"genres":["Adventure","Comedy","Drama"],"boxOfficeDisplay":"~₹105 Cr","boxOfficeUsdM":13,"score":87,"rated":"UA","studio":"Paramvah Studios","music":"Nobin Paul","director":"Kiranraj K","lead":"Rakshit Shetty","support":["Sangeetha Sringeri","Raj B. Shetty","Danish Sait"],"tagline":"Life is a journey best shared with a loyal friend.","colors":["#0c4a6e","#38bdf8"]},
+    {"id":"kn-05","title":"Lucia","industry":"Kannada","year":2013,"genres":["Drama","Mystery","Sci-Fi"],"boxOfficeDisplay":"~₹12 Cr","boxOfficeUsdM":2,"score":83,"rated":"UA","studio":"Audience Films","music":"Poornachandra Tejaswi","director":"Pawan Kumar","lead":"Sathish Ninasam","support":["Sruthi Hariharan","Achyuth Kumar","Sabreen Baker"],"tagline":"A pill that lets you dream whatever you desire.","colors":["#1e1b4b","#a855f7"]},
+    {"id":"kn-06","title":"Ulidavaru Kandanthe","industry":"Kannada","year":2014,"genres":["Crime","Drama","Thriller"],"boxOfficeDisplay":"~₹15 Cr","boxOfficeUsdM":2,"score":84,"rated":"UA","studio":"Suvin Cinemas","music":"B. Ajaneesh Loknath","director":"Rakshit Shetty","lead":"Rakshit Shetty","support":["Kishore","Tara","Sheetal Shetty"],"tagline":"As seen by the rest in coastal Malpe.","colors":["#7c2d12","#facc15"]},
+    {"id":"kn-07","title":"Garuda Gamana Vrishabha Vahana","industry":"Kannada","year":2021,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹32 Cr","boxOfficeUsdM":4,"score":84,"rated":"UA","studio":"Lighter Buddha Films","music":"Midhun Mukundan","director":"Raj B. Shetty","lead":"Raj B. Shetty","support":["Rishab Shetty","Gopalakrishna Deshpande","Harshika Poonacha"],"tagline":"Shiva and Hari rule Mangaluru's underworld.","colors":["#3f1d2e","#fb7185"]},
+    {"id":"kn-08","title":"Sapta Sagaradaache Ello - Side A","industry":"Kannada","year":2023,"genres":["Drama","Romance"],"boxOfficeDisplay":"~₹45 Cr","boxOfficeUsdM":5,"score":83,"rated":"UA","studio":"Paramvah Studios","music":"Charan Raj","director":"Hemanth M. Rao","lead":"Rakshit Shetty","support":["Rukmini Vasanth","Achyuth Kumar","Avinash"],"tagline":"Love locked behind prison walls.","colors":["#0f172a","#38bdf8"]},
+    {"id":"kn-09","title":"Mungaru Male","industry":"Kannada","year":2006,"genres":["Drama","Romance"],"boxOfficeDisplay":"~₹75 Cr","boxOfficeUsdM":17,"score":83,"rated":"U","studio":"E.K. Entertainers","music":"Mano Murthy","director":"Yogaraj Bhat","lead":"Ganesh","support":["Pooja Gandhi","Anant Nag","Sudha Belawadi"],"tagline":"A monsoon romance that rewrote Kannada box office history.","colors":["#064e3b","#34d399"]},
+    {"id":"kn-10","title":"RangiTaranga","industry":"Kannada","year":2015,"genres":["Mystery","Thriller"],"boxOfficeDisplay":"~₹43 Cr","boxOfficeUsdM":7,"score":82,"rated":"UA","studio":"Shree Devi Entertainers","music":"Anup Bhandari","director":"Anup Bhandari","lead":"Nirup Bhandari","support":["Radhika Narayan","Avantika Shetty","Sai Kumar"],"tagline":"Mysteries hidden in the misty Western Ghats.","colors":["#1e293b","#f59e0b"]},
+    {"id":"kn-11","title":"Ugramm","industry":"Kannada","year":2014,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹25 Cr","boxOfficeUsdM":4,"score":81,"rated":"UA","studio":"Inkfinite Pictures","music":"Ravi Basrur","director":"Prashanth Neel","lead":"Sriimurali","support":["Hariprriya","Tilak Shekar","Atul Kulkarni"],"tagline":"A quiet mechanic forced back into a bloody past.","colors":["#18181b","#ef4444"]},
+    {"id":"kn-12","title":"Kirik Party","industry":"Kannada","year":2016,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹50 Cr","boxOfficeUsdM":7,"score":82,"rated":"U","studio":"Paramvah Studios","music":"B. Ajaneesh Loknath","director":"Rishab Shetty","lead":"Rakshit Shetty","support":["Rashmika Mandanna","Samyuktha Hegde","Achyuth Kumar"],"tagline":"Engineering college chaos, friendship, and heartbreak.","colors":["#1e3a8a","#facc15"]},
+    {"id":"kn-13","title":"Avane Srimannarayana","industry":"Kannada","year":2019,"genres":["Action","Adventure","Comedy"],"boxOfficeDisplay":"~₹56 Cr","boxOfficeUsdM":8,"score":77,"rated":"UA","studio":"Pushkar Films","music":"Charan Raj","director":"Sachin Ravi","lead":"Rakshit Shetty","support":["Shanvi Srivastava","Achyuth Kumar","Pramod Shetty"],"tagline":"A quirky cop hunts a missing treasure in Amaravathi.","colors":["#713f12","#fbbf24"]},
+    {"id":"kn-14","title":"Bell Bottom","industry":"Kannada","year":2019,"genres":["Comedy","Mystery","Thriller"],"boxOfficeDisplay":"~₹32 Cr","boxOfficeUsdM":5,"score":81,"rated":"U","studio":"Golden Horse Cinema","music":"B. Ajaneesh Loknath","director":"Jayatheertha","lead":"Rishab Shetty","support":["Hariprriya","Achyuth Kumar","Pramod Shetty"],"tagline":"An 80s retro detective takes on his biggest heist case.","colors":["#4c1d95","#f59e0b"]},
+    {"id":"kn-15","title":"Kavaludaari","industry":"Kannada","year":2019,"genres":["Crime","Mystery","Thriller"],"boxOfficeDisplay":"~₹18 Cr","boxOfficeUsdM":3,"score":80,"rated":"UA","studio":"PRK Productions","music":"Charan Raj","director":"Hemanth M. Rao","lead":"Rishi","support":["Anant Nag","Achyuth Kumar","Roshni Prakash"],"tagline":"Three skulls unearthed by a flyover uncover a 40-year-old crime.","colors":["#1e293b","#94a3b8"]},
+    {"id":"kn-16","title":"Dia","industry":"Kannada","year":2020,"genres":["Drama","Romance"],"boxOfficeDisplay":"~₹14 Cr","boxOfficeUsdM":2,"score":82,"rated":"U","studio":"Sri Swarnalatha Productions","music":"B. Ajaneesh Loknath","director":"K.S. Ashoka","lead":"Kushee Ravi","support":["Pruthvi Ambaar","Dheekshith Shetty","Pavithra Lokesh"],"tagline":"Life is full of surprises.","colors":["#831843","#f472b6"]},
+    {"id":"kn-17","title":"Love Mocktail","industry":"Kannada","year":2020,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹16 Cr","boxOfficeUsdM":2,"score":82,"rated":"U","studio":"Krishna Talkies","music":"Raghu Dixit","director":"Darling Krishna","lead":"Darling Krishna","support":["Milana Nagaraj","Amrutha Iyengar","Rachana Inder"],"tagline":"Every love story has a bittersweet flavor.","colors":["#0f766e","#2dd4bf"]},
+    {"id":"kn-18","title":"Vikrant Rona","industry":"Kannada","year":2022,"genres":["Action","Adventure","Mystery"],"boxOfficeDisplay":"~₹158 Cr","boxOfficeUsdM":20,"score":69,"rated":"UA","studio":"Shalini Arts","music":"B. Ajaneesh Loknath","director":"Anup Bhandari","lead":"Sudeepa","support":["Nirup Bhandari","Neetha Ashok","Jacqueline Fernandez"],"tagline":"The devil arrives in a rain-drenched village.","colors":["#052e16","#22c55e"]},
+    {"id":"kn-19","title":"Raajakumara","industry":"Kannada","year":2017,"genres":["Action","Drama","Family"],"boxOfficeDisplay":"~₹75 Cr","boxOfficeUsdM":12,"score":79,"rated":"U","studio":"Hombale Films","music":"V. Harikrishna","director":"Santhosh Ananddram","lead":"Puneeth Rajkumar","support":["Priya Anand","Sarathkumar","Prakash Raj"],"tagline":"Respect elders and live with dignity.","colors":["#1e3a8a","#60a5fa"]},
+    {"id":"kn-20","title":"Tagaru","industry":"Kannada","year":2018,"genres":["Action","Crime","Thriller"],"boxOfficeDisplay":"~₹45 Cr","boxOfficeUsdM":7,"score":79,"rated":"A","studio":"Venus Entertainers","music":"Charan Raj","director":"Duniya Soori","lead":"Shiva Rajkumar","support":["Dhananjaya","Vasishta N. Simha","Manvitha Kamath"],"tagline":"A relentless cop vs. the brutal Daali.","colors":["#450a0a","#f97316"]},
+    {"id":"kn-21","title":"Mufti","industry":"Kannada","year":2017,"genres":["Action","Crime","Thriller"],"boxOfficeDisplay":"~₹45 Cr","boxOfficeUsdM":7,"score":79,"rated":"UA","studio":"Jayanna Combines","music":"Ravi Basrur","director":"Narthan","lead":"Shiva Rajkumar","support":["Sriimurali","Shanvi Srivastava","Vasishta N. Simha"],"tagline":"An undercover officer infiltrates Bhairathi Ranagal's empire.","colors":["#1c1917","#eab308"]},
+    {"id":"kn-22","title":"Upendra","industry":"Kannada","year":1999,"genres":["Drama","Psychological","Thriller"],"boxOfficeDisplay":"~₹18 Cr","boxOfficeUsdM":4,"score":86,"rated":"A","studio":"Shilpa Srinivas","music":"Gurukiran","director":"Upendra","lead":"Upendra","support":["Raveena Tandon","Prema","Damini"],"tagline":"Naanu — a radical exploration of human ego.","colors":["#311042","#ec4899"]},
+    {"id":"kn-23","title":"Om","industry":"Kannada","year":1995,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹14 Cr","boxOfficeUsdM":4,"score":86,"rated":"A","studio":"Poornima Enterprises","music":"Hamsalekha","director":"Upendra","lead":"Shiva Rajkumar","support":["Prema","Srishanthi","Sadhu Kokila"],"tagline":"The cult Bengaluru underworld classic re-released over 500 times.","colors":["#7f1d1d","#facc15"]},
+    {"id":"kn-24","title":"Googly","industry":"Kannada","year":2013,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹25 Cr","boxOfficeUsdM":4,"score":77,"rated":"U","studio":"Jayanna Combines","music":"Joshua Sridhar","director":"Pawan Wadeyar","lead":"Yash","support":["Kriti Kharbanda","Anant Nag","Sadhu Kokila"],"tagline":"Love bowls the sharpest googly.","colors":["#1e40af","#38bdf8"]},
+    {"id":"kn-25","title":"Sarkari Hi. Pra. Shaale","industry":"Kannada","year":2018,"genres":["Comedy","Drama","Family"],"boxOfficeDisplay":"~₹24 Cr","boxOfficeUsdM":3,"score":85,"rated":"U","studio":"Rishab Shetty Films","music":"Vasuki Vaibhav","director":"Rishab Shetty","lead":"Anant Nag","support":["Ranjan","Sampath","Pramod Shetty"],"tagline":"Children fight to save their Kannada-medium school in Kasaragod.","colors":["#14532d","#facc15"]},
+    {"id":"kn-26","title":"Hostel Hudugaru Bekagiddare","industry":"Kannada","year":2023,"genres":["Comedy","Drama"],"boxOfficeDisplay":"~₹30 Cr","boxOfficeUsdM":4,"score":78,"rated":"UA","studio":"Gulmohur Films","music":"B. Ajaneesh Loknath","director":"Nithin Krishnamurthy","lead":"Prajwal B.P.","support":["Manjunath Nayaka","Rakesh Rajkumar","Rishab Shetty"],"tagline":"One chaotic night inside a boys' hostel.","colors":["#4c1d95","#fb7185"]},
+    {"id":"kn-27","title":"Max","industry":"Kannada","year":2024,"genres":["Action","Thriller"],"boxOfficeDisplay":"~₹60 Cr","boxOfficeUsdM":7,"score":76,"rated":"UA","studio":"V Creations","music":"B. Ajaneesh Loknath","director":"Vijay Kartikeyaa","lead":"Sudeepa","support":["Varalaxmi Sarathkumar","Sunil","Samyuktha Hornad"],"tagline":"One night. One police station. Maximum fury.","colors":["#0f172a","#ef4444"]},
+    {"id":"kn-28","title":"A","industry":"Kannada","year":1998,"genres":["Drama","Mystery","Romance"],"boxOfficeDisplay":"~₹16 Cr","boxOfficeUsdM":4,"score":84,"rated":"A","studio":"Jagannath","music":"Gurukiran","director":"Upendra","lead":"Upendra","support":["Chandini","Archana","Biradar"],"tagline":"Non-linear storytelling that stunned Indian cinema.","colors":["#18181b","#f43f5e"]},
+
+    {"id":"pi-01","title":"RRR","industry":"Pan-India","year":2022,"genres":["Action","Drama","History"],"boxOfficeDisplay":"~₹1300 Cr","boxOfficeUsdM":160,"score":78,"rated":"UA","studio":"DVV Entertainment","music":"M.M. Keeravani","director":"S.S. Rajamouli","lead":"N.T. Rama Rao Jr.","support":["Ram Charan","Alia Bhatt","Ajay Devgn"],"tagline":"Rise. Roar. Revolt.","colors":["#7c2d12","#38bdf8"]},
+    {"id":"pi-02","title":"Baahubali: The Beginning","industry":"Pan-India","year":2015,"genres":["Action","Drama","Fantasy"],"boxOfficeDisplay":"~₹650 Cr","boxOfficeUsdM":100,"score":80,"rated":"UA","studio":"Arka Media Works","music":"M.M. Keeravani","director":"S.S. Rajamouli","lead":"Prabhas","support":["Rana Daggubati","Anushka Shetty","Tamannaah Bhatia"],"tagline":"Why did Kattappa kill Baahubali?","colors":["#78350f","#fbbf24"]},
+    {"id":"pi-03","title":"Baahubali 2: The Conclusion","industry":"Pan-India","year":2017,"genres":["Action","Drama","Fantasy"],"boxOfficeDisplay":"~₹1810 Cr","boxOfficeUsdM":278,"score":82,"rated":"UA","studio":"Arka Media Works","music":"M.M. Keeravani","director":"S.S. Rajamouli","lead":"Prabhas","support":["Rana Daggubati","Anushka Shetty","Sathyaraj"],"tagline":"The conclusion to India's biggest epic.","colors":["#451a03","#f59e0b"]},
+    {"id":"pi-04","title":"Pushpa: The Rise","industry":"Pan-India","year":2021,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹373 Cr","boxOfficeUsdM":50,"score":76,"rated":"UA","studio":"Mythri Movie Makers","music":"Devi Sri Prasad","director":"Sukumar","lead":"Allu Arjun","support":["Fahadh Faasil","Rashmika Mandanna","Sunil"],"tagline":"Pushpa ante flower anukuntiva? Fire!","colors":["#7f1d1d","#f97316"]},
+    {"id":"pi-05","title":"Pushpa 2: The Rule","industry":"Pan-India","year":2024,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹1742 Cr","boxOfficeUsdM":206,"score":68,"rated":"UA","studio":"Mythri Movie Makers","music":"Devi Sri Prasad","director":"Sukumar","lead":"Allu Arjun","support":["Fahadh Faasil","Rashmika Mandanna","Jagapathi Babu"],"tagline":"The rule begins.","colors":["#450a0a","#fbbf24"]},
+    {"id":"pi-06","title":"Kalki 2898 AD","industry":"Pan-India","year":2024,"genres":["Action","Adventure","Sci-Fi"],"boxOfficeDisplay":"~₹1042 Cr","boxOfficeUsdM":125,"score":71,"rated":"UA","studio":"Vyjayanthi Movies","music":"Santhosh Narayanan","director":"Nag Ashwin","lead":"Prabhas","support":["Amitabh Bachchan","Kamal Haasan","Deepika Padukone"],"tagline":"When darkness takes over, a new avatar rises.","colors":["#1e1b4b","#f59e0b"]},
+    {"id":"pi-07","title":"Vikram","industry":"Pan-India","year":2022,"genres":["Action","Crime","Thriller"],"boxOfficeDisplay":"~₹435 Cr","boxOfficeUsdM":55,"score":83,"rated":"UA","studio":"Raaj Kamal Films","music":"Anirudh Ravichander","director":"Lokesh Kanagaraj","lead":"Kamal Haasan","support":["Vijay Sethupathi","Fahadh Faasil","Suriya"],"tagline":"Once upon a time there lived a ghost.","colors":["#090d16","#ef4444"]},
+    {"id":"pi-08","title":"Kaithi","industry":"Pan-India","year":2019,"genres":["Action","Crime","Thriller"],"boxOfficeDisplay":"~₹105 Cr","boxOfficeUsdM":15,"score":84,"rated":"UA","studio":"Dream Warrior Pictures","music":"Sam C.S.","director":"Lokesh Kanagaraj","lead":"Karthi","support":["Narain","Arjun Das","George Maryan"],"tagline":"One night, one lorry, and an army of smugglers.","colors":["#18181b","#f97316"]},
+    {"id":"pi-09","title":"Salaar: Part 1 - Ceasefire","industry":"Pan-India","year":2023,"genres":["Action","Crime","Drama"],"boxOfficeDisplay":"~₹617 Cr","boxOfficeUsdM":74,"score":66,"rated":"A","studio":"Hombale Films","music":"Ravi Basrur","director":"Prashanth Neel","lead":"Prabhas","support":["Prithviraj Sukumaran","Shruti Haasan","Jagapathi Babu"],"tagline":"Two friends become the deadliest enemies in Khansaar.","colors":["#1c1917","#dc2626"]},
+    {"id":"pi-10","title":"Jailer","industry":"Pan-India","year":2023,"genres":["Action","Comedy","Crime"],"boxOfficeDisplay":"~₹607 Cr","boxOfficeUsdM":73,"score":71,"rated":"UA","studio":"Sun Pictures","music":"Anirudh Ravichander","director":"Nelson Dilipkumar","lead":"Rajinikanth","support":["Vinayakan","Ramya Krishnan","Shiva Rajkumar"],"tagline":"Hukum — Tiger ka hukum.","colors":["#292524","#facc15"]},
+    {"id":"pi-11","title":"Leo","industry":"Pan-India","year":2023,"genres":["Action","Crime","Thriller"],"boxOfficeDisplay":"~₹615 Cr","boxOfficeUsdM":74,"score":72,"rated":"UA","studio":"Seven Screen Studio","music":"Anirudh Ravichander","director":"Lokesh Kanagaraj","lead":"Vijay","support":["Sanjay Dutt","Trisha Krishnan","Arjun Sarja"],"tagline":"Bloody sweet.","colors":["#450a0a","#38bdf8"]},
+    {"id":"pi-12","title":"96","industry":"Pan-India","year":2018,"genres":["Drama","Romance"],"boxOfficeDisplay":"~₹55 Cr","boxOfficeUsdM":8,"score":85,"rated":"U","studio":"Madras Enterprises","music":"Govind Vasantha","director":"C. Premkumar","lead":"Vijay Sethupathi","support":["Trisha Krishnan","Aditya Bhaskar","Gouri G. Kishan"],"tagline":"A high school reunion awakens an unforgettable first love.","colors":["#713f12","#fde047"]},
+    {"id":"pi-13","title":"Super Deluxe","industry":"Pan-India","year":2019,"genres":["Comedy","Crime","Drama"],"boxOfficeDisplay":"~₹32 Cr","boxOfficeUsdM":5,"score":83,"rated":"A","studio":"Tyler Durden and Kino Fist","music":"Yuvan Shankar Raja","director":"Thiagarajan Kumararaja","lead":"Vijay Sethupathi","support":["Fahadh Faasil","Samantha Ruth Prabhu","Ramya Krishnan"],"tagline":"Four intertwined lives collide on one unpredictable day.","colors":["#3b0764","#f43f5e"]},
+    {"id":"pi-14","title":"Premam","industry":"Pan-India","year":2015,"genres":["Comedy","Drama","Romance"],"boxOfficeDisplay":"~₹73 Cr","boxOfficeUsdM":11,"score":83,"rated":"U","studio":"Anwar Rasheed Entertainment","music":"Rajesh Murugesan","director":"Alphonse Puthren","lead":"Nivin Pauly","support":["Sai Pallavi","Madonna Sebastian","Anupama Parameswaran"],"tagline":"Three stages of a young man's romantic journey.","colors":["#065f46","#34d399"]},
+    {"id":"pi-15","title":"Manjummel Boys","industry":"Pan-India","year":2024,"genres":["Adventure","Drama","Thriller"],"boxOfficeDisplay":"~₹242 Cr","boxOfficeUsdM":29,"score":82,"rated":"U","studio":"Parava Films","music":"Sushin Shyam","director":"Chidambaram","lead":"Soubin Shahir","support":["Sreenath Bhasi","Balu Varghese","Ganapathi"],"tagline":"Friendship tested inside the Guna Caves.","colors":["#064e3b","#facc15"]},
+    {"id":"pi-16","title":"Eega","industry":"Pan-India","year":2012,"genres":["Action","Comedy","Fantasy"],"boxOfficeDisplay":"~₹130 Cr","boxOfficeUsdM":24,"score":77,"rated":"UA","studio":"Vaaraahi Chalana Chitram","music":"M.M. Keeravani","director":"S.S. Rajamouli","lead":"Nani","support":["Samantha Ruth Prabhu","Sudeepa","Santhanam"],"tagline":"Reborn as a housefly to avenge his murder.","colors":["#1e3a8a","#a3e635"]},
+    {"id":"pi-17","title":"Kantara: Chapter 1","industry":"Pan-India","year":2025,"genres":["Action","Drama","Fantasy"],"boxOfficeDisplay":"~₹600 Cr","boxOfficeUsdM":72,"score":81,"rated":"UA","studio":"Hombale Films","music":"B. Ajaneesh Loknath","director":"Rishab Shetty","lead":"Rishab Shetty","support":["Rukmini Vasanth","Jayaram","Gulshan Devaiah"],"tagline":"The origin of the divine legend.","colors":["#450a0a","#eab308"]},
+    {"id":"pi-18","title":"Aavesham","industry":"Pan-India","year":2024,"genres":["Action","Comedy"],"boxOfficeDisplay":"~₹156 Cr","boxOfficeUsdM":19,"score":79,"rated":"UA","studio":"Fahadh Faasil and Friends","music":"Sushin Shyam","director":"Jithu Madhavan","lead":"Fahadh Faasil","support":["Hipzster","Mithun Jai Shankar","Roshan Shanavas"],"tagline":"Eda Mone!","colors":["#311042","#facc15"]},
+    {"id":"pi-19","title":"Maharaja","industry":"Pan-India","year":2024,"genres":["Action","Crime","Thriller"],"boxOfficeDisplay":"~₹190 Cr","boxOfficeUsdM":23,"score":85,"rated":"UA","studio":"Passion Studios","music":"B. Ajaneesh Loknath","director":"Nithilan Saminathan","lead":"Vijay Sethupathi","support":["Anurag Kashyap","Mamta Mohandas","Natty Subramaniam"],"tagline":"A barber demands police find his stolen iron dustbin, Lakshmi.","colors":["#1e293b","#f97316"]},
+    {"id":"pi-20","title":"Sita Ramam","industry":"Pan-India","year":2022,"genres":["Drama","Mystery","Romance"],"boxOfficeDisplay":"~₹98 Cr","boxOfficeUsdM":12,"score":85,"rated":"U","studio":"Vyjayanthi Movies","music":"Vishal Chandrashekhar","director":"Hanu Raghavapudi","lead":"Dulquer Salmaan","support":["Mrunal Thakur","Rashmika Mandanna","Sumanth"],"tagline":"A love letter delivered 20 years too late.","colors":["#7f1d1d","#fde047"]}
+  ]
+  </script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      "use strict";
+
+      // =========================================================================
+      // 1. SAFE STORAGE & JSON PARSING HELPERS
+      // =========================================================================
+      var STORAGE_KEYS = {
+        SETTINGS: "cinespotle_settings_v1",
+        STATS: "cinespotle_stats_v1",
+        DAILY_STATE: "cinespotle_daily_v1"
+      };
+
+      function safeGetStorage(key, fallback) {
+        try {
+          var raw = window.localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch (err) {
+          return fallback;
+        }
+      }
+
+      function safeSetStorage(key, value) {
+        try {
+          window.localStorage.setItem(key, JSON.stringify(value));
+        } catch (err) {
+          // Ignore SecurityError in private browsing or restricted iframes
+        }
+      }
+
+      var ALL_MOVIES = [];
+      try {
+        var jsonEl = document.getElementById("movies-json");
+        if (jsonEl && jsonEl.textContent) {
+          ALL_MOVIES = JSON.parse(jsonEl.textContent);
+        }
+      } catch (parseErr) {
+        ALL_MOVIES = [];
+      }
+
+      // =========================================================================
+      // 2. APPLICATION STATE
+      // =========================================================================
+      var MAX_GUESSES = 10;
+
+      var settings = safeGetStorage(STORAGE_KEYS.SETTINGS, {
+        industry: "All",
+        mode: "daily",
+        theme: "marquee",
+        tmdbKey: ""
+      });
+
+      var stats = safeGetStorage(STORAGE_KEYS.STATS, {
+        played: 0,
+        wins: 0,
+        streak: 0,
+        maxStreak: 0,
+        distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0, "10": 0 }
+      });
+
+      var gameState = {
+        targetMovie: null,
+        guesses: [],
+        status: "playing", // "playing" | "won" | "lost"
+        hintsRevealed: 0,
+        tmdbCache: {}
+      };
+
+      // =========================================================================
+      // 3. DOMAIN KNOWLEDGE TABLES (STUDIOS, RATINGS, COMPOSERS)
+      // =========================================================================
+      var SISTER_STUDIOS = [
+        ["Warner Bros.", "New Line Cinema", "Castle Rock"],
+        ["Marvel Studios", "20th Century Fox", "UTV Motion Pictures"],
+        ["Paramount Pictures", "DreamWorks"],
+        ["Yash Raj Films", "Dharma Productions", "Red Chillies Entertainment"],
+        ["Hombale Films", "Paramvah Studios", "PRK Productions", "Rishab Shetty Films"],
+        ["Mythri Movie Makers", "Arka Media Works", "DVV Entertainment", "Vyjayanthi Movies"],
+        ["SLB Films", "Eros International", "Viacom18 Studios"],
+        ["Vinod Chopra Films", "Aamir Khan Productions", "Excel Entertainment"],
+        ["Raaj Kamal Films", "Dream Warrior Pictures", "Seven Screen Studio", "Sun Pictures"]
+      ];
+
+      var RATING_SCALE = {
+        "U": 1,
+        "PG": 1,
+        "UA": 2,
+        "PG-13": 2,
+        "A": 3,
+        "R": 3
+      };
+
+      // =========================================================================
+      // 4. DOM REFERENCES
+      // =========================================================================
+      var els = {
+        marqueeBulbs: document.getElementById("marquee-bulbs"),
+        btnOpenDrawer: document.getElementById("btn-open-drawer"),
+        btnCloseDrawer: document.getElementById("btn-close-drawer"),
+        drawerBackdrop: document.getElementById("drawer-backdrop"),
+        navDrawer: document.getElementById("nav-drawer"),
+        activeFilterBadge: document.getElementById("active-filter-badge"),
+        headerModeLabel: document.getElementById("header-mode-label"),
+        btnOpenStats: document.getElementById("btn-open-stats"),
+        btnOpenSettings: document.getElementById("btn-open-settings"),
+        btnOpenHelp: document.getElementById("btn-open-help"),
+        btnOpenHint: document.getElementById("btn-open-hint"),
+        hintCountPill: document.getElementById("hint-count-pill"),
+        guessCounterText: document.getElementById("guess-counter-text"),
+        progressSegments: document.getElementById("progress-segments"),
+        btnNewMovie: document.getElementById("btn-new-movie"),
+        btnGiveUp: document.getElementById("btn-give-up"),
+        tmdbStatusPill: document.getElementById("tmdb-status-pill"),
+        resultBanner: document.getElementById("result-banner"),
+        resultPoster: document.getElementById("result-poster"),
+        resultBadge: document.getElementById("result-badge"),
+        resultTitle: document.getElementById("result-title"),
+        resultMeta: document.getElementById("result-meta"),
+        resultTagline: document.getElementById("result-tagline"),
+        resultCredits: document.getElementById("result-credits"),
+        btnShareResult: document.getElementById("btn-share-result"),
+        btnPlayAnother: document.getElementById("btn-play-another"),
+        searchSection: document.getElementById("search-section"),
+        searchInput: document.getElementById("movie-search-input"),
+        btnClearSearch: document.getElementById("btn-clear-search"),
+        btnBrowseAll: document.getElementById("btn-browse-all"),
+        searchDropdown: document.getElementById("search-dropdown"),
+        emptyState: document.getElementById("empty-state"),
+        guessesContainer: document.getElementById("guesses-container"),
+        toastBanner: document.getElementById("toast-banner"),
+        toastMessage: document.getElementById("toast-message"),
+        settingIndustry: document.getElementById("setting-industry"),
+        settingModeDaily: document.getElementById("setting-mode-daily"),
+        settingModeEndless: document.getElementById("setting-mode-endless"),
+        settingThemeMarquee: document.getElementById("setting-theme-marquee"),
+        settingThemeMidnight: document.getElementById("setting-theme-midnight"),
+        settingTmdbKey: document.getElementById("setting-tmdb-key"),
+        btnSaveTmdb: document.getElementById("btn-save-tmdb"),
+        btnClearTmdb: document.getElementById("btn-clear-tmdb"),
+        btnResetStats: document.getElementById("btn-reset-stats"),
+        resetConfirmBox: document.getElementById("reset-confirm-box"),
+        btnConfirmReset: document.getElementById("btn-confirm-reset"),
+        btnCancelReset: document.getElementById("btn-cancel-reset"),
+        hintsList: document.getElementById("hints-list"),
+        btnRevealNextHint: document.getElementById("btn-reveal-next-hint"),
+        statPlayed: document.getElementById("stat-played"),
+        statWinPct: document.getElementById("stat-winpct"),
+        statStreak: document.getElementById("stat-streak"),
+        statMaxStreak: document.getElementById("stat-maxstreak"),
+        statDistribution: document.getElementById("stat-distribution"),
+        btnCancelGiveUp: document.getElementById("btn-cancel-giveup"),
+        btnConfirmGiveUp: document.getElementById("btn-confirm-giveup")
+      };
+
+      // =========================================================================
+      // 5. UTILITY FUNCTIONS (ESCAPING, SVG ART, TOAST, DAILY SEED)
+      // =========================================================================
+      function escapeHtml(str) {
+        return String(str == null ? "" : str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      var toastTimer = null;
+      function showToast(msg) {
+        els.toastMessage.textContent = msg;
+        els.toastBanner.classList.remove("opacity-0");
+        els.toastBanner.classList.add("opacity-100");
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          els.toastBanner.classList.remove("opacity-100");
+          els.toastBanner.classList.add("opacity-0");
+        }, 2400);
+      }
+
+      function getInitials(name) {
+        var parts = String(name || "?").trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+
+      function buildPosterSvg(movie) {
+        var c1 = (movie.colors && movie.colors[0]) || "#1e1b4b";
+        var c2 = (movie.colors && movie.colors[1]) || "#ec4899";
+        var safeTitle = escapeHtml(movie.title);
+        var shortTitle = safeTitle.length > 18 ? safeTitle.slice(0, 17) + "…" : safeTitle;
+        var indCode = movie.industry === "Hollywood" ? "HW" :
+                      movie.industry === "Bollywood" ? "BW" :
+                      movie.industry === "Kannada" ? "KN" : "PI";
+
+        return [
+          '<svg viewBox="0 0 120 180" class="w-full h-full block" xmlns="http://www.w3.org/2000/svg">',
+          '<defs>',
+          '<linearGradient id="g-' + escapeHtml(movie.id) + '" x1="0" y1="0" x2="1" y2="1">',
+          '<stop offset="0%" stop-color="' + escapeHtml(c1) + '"/>',
+          '<stop offset="100%" stop-color="' + escapeHtml(c2) + '"/>',
+          '</linearGradient>',
+          '</defs>',
+          '<rect width="120" height="180" fill="url(#g-' + escapeHtml(movie.id) + ')"/>',
+          '<circle cx="95" cy="30" r="36" fill="rgba(255,255,255,0.08)"/>',
+          '<circle cx="24" cy="145" r="44" fill="rgba(0,0,0,0.22)"/>',
+          '<rect x="10" y="10" width="28" height="16" rx="5" fill="rgba(0,0,0,0.48)"/>',
+          '<text x="24" y="21" text-anchor="middle" fill="#ffffff" font-family="Inter,sans-serif" font-size="9" font-weight="800">' + indCode + '</text>',
+          '<text x="60" y="96" text-anchor="middle" fill="rgba(255,255,255,0.92)" font-family="Inter,sans-serif" font-size="26" font-weight="900">' + escapeHtml(getInitials(movie.title)) + '</text>',
+          '<rect x="8" y="132" width="104" height="38" rx="6" fill="rgba(11,15,25,0.72)"/>',
+          '<text x="60" y="148" text-anchor="middle" fill="#ffffff" font-family="Inter,sans-serif" font-size="8.5" font-weight="800">' + shortTitle + '</text>',
+          '<text x="60" y="162" text-anchor="middle" fill="#cbd5e1" font-family="Inter,sans-serif" font-size="8" font-weight="600">' + escapeHtml(movie.year) + '</text>',
+          '</svg>'
+        ].join("");
+      }
+
+      function getFilteredPool() {
+        if (settings.industry === "All") return ALL_MOVIES;
+        var filtered = ALL_MOVIES.filter(function (m) {
+          return m.industry === settings.industry;
+        });
+        return filtered.length > 0 ? filtered : ALL_MOVIES;
+      }
+
+      function getTodayKey() {
+        var now = new Date();
+        var y = now.getFullYear();
+        var m = String(now.getMonth() + 1).padStart(2, "0");
+        var d = String(now.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + d;
+      }
+
+      function getDailyMovie(pool) {
+        var key = getTodayKey() + ":" + settings.industry;
+        var hash = 0;
+        for (var i = 0; i < key.length; i++) {
+          hash = ((hash << 5) - hash) + key.charCodeAt(i);
+          hash |= 0;
+        }
+        var idx = Math.abs(hash) % pool.length;
+        return pool[idx];
+      }
+
+      function getRandomMovie(pool, excludeId) {
+        if (pool.length === 1) return pool[0];
+        var candidates = pool.filter(function (m) { return m.id !== excludeId; });
+        var idx = Math.floor(Math.random() * candidates.length);
+        return candidates[idx];
+      }
+
+      // =========================================================================
+      // 6. ATTRIBUTE COMPARISON ENGINE
+      // =========================================================================
+      function normalizeText(s) {
+        return String(s || "").trim().toLowerCase();
+      }
+
+      function areSisterStudios(s1, s2) {
+        var a = normalizeText(s1);
+        var b = normalizeText(s2);
+        if (!a || !b) return false;
+        if (a === b) return true;
+        for (var i = 0; i < SISTER_STUDIOS.length; i++) {
+          var group = SISTER_STUDIOS[i].map(normalizeText);
+          if (group.indexOf(a) !== -1 && group.indexOf(b) !== -1) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function areSharedComposers(m1, m2) {
+        var a = normalizeText(m1);
+        var b = normalizeText(m2);
+        if (!a || !b) return false;
+        if (a === b) return true;
+        var tokensA = a.split(/[-&,\/]/).map(function (t) { return t.trim(); });
+        var tokensB = b.split(/[-&,\/]/).map(function (t) { return t.trim(); });
+        for (var i = 0; i < tokensA.length; i++) {
+          if (tokensA[i].length > 3 && tokensB.indexOf(tokensA[i]) !== -1) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function compareMovies(guess, target) {
+        // 1. Genres
+        var targetGenresLower = target.genres.map(normalizeText);
+        var guessGenresLower = guess.genres.map(normalizeText);
+        var matchedGenres = guess.genres.filter(function (g) {
+          return targetGenresLower.indexOf(normalizeText(g)) !== -1;
+        });
+        var isExactGenres =
+          matchedGenres.length === target.genres.length &&
+          guess.genres.length === target.genres.length;
+        var genreStatus = isExactGenres ? "exact" : (matchedGenres.length > 0 ? "close" : "miss");
+
+        // 2. Year (±5 years = close)
+        var yearDiff = target.year - guess.year;
+        var yearStatus = yearDiff === 0 ? "exact" : (Math.abs(yearDiff) <= 5 ? "close" : "miss");
+        var yearArrow = yearDiff > 0 ? "↑" : (yearDiff < 0 ? "↓" : "");
+
+        // 3. Box Office (±25% = close)
+        var gBo = Number(guess.boxOfficeUsdM) || 1;
+        var tBo = Number(target.boxOfficeUsdM) || 1;
+        var boRatioDiff = Math.abs(tBo - gBo) / Math.max(tBo, 1);
+        var boStatus = gBo === tBo ? "exact" : (boRatioDiff <= 0.25 ? "close" : "miss");
+        var boArrow = tBo > gBo ? "↑" : (tBo < gBo ? "↓" : "");
+
+        // 4. Score (±7 points = close)
+        var scoreDiff = target.score - guess.score;
+        var scoreStatus = scoreDiff === 0 ? "exact" : (Math.abs(scoreDiff) <= 7 ? "close" : "miss");
+        var scoreArrow = scoreDiff > 0 ? "↑" : (scoreDiff < 0 ? "↓" : "");
+
+        // 5. Rated
+        var r1 = normalizeText(guess.rated);
+        var r2 = normalizeText(target.rated);
+        var ratedStatus = "miss";
+        if (r1 === r2) {
+          ratedStatus = "exact";
+        } else {
+          var s1 = RATING_SCALE[guess.rated] || 0;
+          var s2 = RATING_SCALE[target.rated] || 0;
+          if (s1 > 0 && s2 > 0 && Math.abs(s1 - s2) <= 1) {
+            ratedStatus = "close";
+          }
+        }
+
+        // 6. Studio
+        var studioStatus = normalizeText(guess.studio) === normalizeText(target.studio)
+          ? "exact"
+          : (areSisterStudios(guess.studio, target.studio) ? "close" : "miss");
+
+        // 7. Music
+        var musicStatus = normalizeText(guess.music) === normalizeText(target.music)
+          ? "exact"
+          : (areSharedComposers(guess.music, target.music) ? "close" : "miss");
+
+        // 8. Director
+        var directorStatus = normalizeText(guess.director) === normalizeText(target.director) ? "exact" : "miss";
+
+        // 9. Lead Actor
+        var targetSupportLower = target.support.map(normalizeText);
+        var targetLeadLower = normalizeText(target.lead);
+        var targetDirLower = normalizeText(target.director);
+
+        var guessLeadLower = normalizeText(guess.lead);
+        var leadStatus = "miss";
+        if (guessLeadLower === targetLeadLower) {
+          leadStatus = "exact";
+        } else if (targetSupportLower.indexOf(guessLeadLower) !== -1 || guessLeadLower === targetDirLower) {
+          leadStatus = "close";
+        }
+
+        // 10. Supporting Cast (3 slots)
+        var supportResults = guess.support.slice(0, 3).map(function (actor) {
+          var aLower = normalizeText(actor);
+          var status = "miss";
+          if (targetSupportLower.indexOf(aLower) !== -1) {
+            status = "exact";
+          } else if (aLower === targetLeadLower || aLower === targetDirLower) {
+            status = "close";
+          }
+          return { name: actor, status: status };
+        });
+
+        return {
+          genres: { status: genreStatus, matchedList: matchedGenres.map(normalizeText) },
+          year: { status: yearStatus, arrow: yearArrow },
+          boxOffice: { status: boStatus, arrow: boArrow },
+          score: { status: scoreStatus, arrow: scoreArrow },
+          rated: { status: ratedStatus },
+          studio: { status: studioStatus },
+          music: { status: musicStatus },
+          director: { status: directorStatus },
+          lead: { status: leadStatus },
+          support: supportResults
+        };
+      }
+
+      // =========================================================================
+      // 7. RENDERING FUNCTIONS
+      // =========================================================================
+      function renderMarqueeBulbs() {
+        var html = "";
+        for (var i = 0; i < 28; i++) {
+          html += '<span class="marquee-bulb"></span>';
+        }
+        els.marqueeBulbs.innerHTML = html;
+      }
+
+      function applyTheme() {
+        if (settings.theme === "midnight") {
+          document.body.classList.add("theme-midnight");
+        } else {
+          document.body.classList.remove("theme-midnight");
+        }
+      }
+
+      function updateHeaderAndControls() {
+        applyTheme();
+        els.activeFilterBadge.textContent = settings.industry === "All" ? "All Industries" : settings.industry;
+        els.headerModeLabel.textContent = settings.mode === "daily" ? "Daily Challenge" : "Endless Practice";
+        els.hintCountPill.textContent = gameState.hintsRevealed + "/4";
+
+        // Update Endless New Movie button visibility
+        if (settings.mode === "endless") {
+          els.btnNewMovie.classList.remove("hidden");
+          els.btnNewMovie.classList.add("inline-flex");
+        } else {
+          els.btnNewMovie.classList.add("hidden");
+          els.btnNewMovie.classList.remove("inline-flex");
+        }
+
+        // Update TMDB status pill
+        if (settings.tmdbKey && settings.tmdbKey.trim().length > 5) {
+          els.tmdbStatusPill.classList.remove("hidden");
+        } else {
+          els.tmdbStatusPill.classList.add("hidden");
+        }
+
+        // Update Quick Industry Buttons
+        var quickBtns = document.querySelectorAll(".quick-ind-btn");
+        for (var i = 0; i < quickBtns.length; i++) {
+          var btn = quickBtns[i];
+          var ind = btn.getAttribute("data-quick-industry");
+          if (ind === settings.industry) {
+            btn.className = "quick-ind-btn px-2 py-0.5 rounded-md font-bold bg-pink-500/25 text-pink-300 border border-pink-500/40 transition cursor-pointer";
+          } else {
+            btn.className = "quick-ind-btn px-2 py-0.5 rounded-md font-semibold bg-slate-800/70 text-slate-400 hover:text-slate-200 transition cursor-pointer";
+          }
+        }
+
+        // Update Drawer Active States
+        var drawerInds = document.querySelectorAll(".drawer-ind-item");
+        for (var j = 0; j < drawerInds.length; j++) {
+          var dBtn = drawerInds[j];
+          var dInd = dBtn.getAttribute("data-drawer-industry");
+          if (dInd === settings.industry) {
+            dBtn.className = "drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold bg-pink-500/20 text-pink-200 border border-pink-500/40 transition cursor-pointer";
+          } else {
+            dBtn.className = "drawer-ind-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold bg-[#1b2338] text-slate-300 hover:bg-slate-800 border border-transparent transition cursor-pointer";
+          }
+        }
+
+        var drawerModes = document.querySelectorAll(".drawer-mode-item");
+        for (var k = 0; k < drawerModes.length; k++) {
+          var mBtn = drawerModes[k];
+          var mVal = mBtn.getAttribute("data-drawer-mode");
+          if (mVal === settings.mode) {
+            mBtn.className = "drawer-mode-item px-3 py-2.5 rounded-xl text-xs font-extrabold border border-pink-500/50 bg-pink-500/20 text-pink-200 transition cursor-pointer text-center";
+          } else {
+            mBtn.className = "drawer-mode-item px-3 py-2.5 rounded-xl text-xs font-extrabold border border-slate-700 bg-[#1b2338] text-slate-300 transition cursor-pointer text-center";
+          }
+        }
+
+        // Update Settings Modal controls
+        els.settingIndustry.value = settings.industry;
+        els.settingTmdbKey.value = settings.tmdbKey || "";
+        els.settingModeDaily.className = settings.mode === "daily"
+          ? "px-3 py-2.5 rounded-xl border border-pink-500/50 bg-pink-500/20 text-pink-200 text-xs font-extrabold transition cursor-pointer"
+          : "px-3 py-2.5 rounded-xl border border-slate-700 bg-[#1b2338] text-slate-300 text-xs font-extrabold transition cursor-pointer";
+        els.settingModeEndless.className = settings.mode === "endless"
+          ? "px-3 py-2.5 rounded-xl border border-pink-500/50 bg-pink-500/20 text-pink-200 text-xs font-extrabold transition cursor-pointer"
+          : "px-3 py-2.5 rounded-xl border border-slate-700 bg-[#1b2338] text-slate-300 text-xs font-extrabold transition cursor-pointer";
+        els.settingThemeMarquee.className = settings.theme === "marquee"
+          ? "px-3 py-2.5 rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-200 text-xs font-extrabold transition cursor-pointer"
+          : "px-3 py-2.5 rounded-xl border border-slate-700 bg-[#1b2338] text-slate-300 text-xs font-extrabold transition cursor-pointer";
+        els.settingThemeMidnight.className = settings.theme === "midnight"
+          ? "px-3 py-2.5 rounded-xl border border-sky-500/50 bg-sky-500/20 text-sky-200 text-xs font-extrabold transition cursor-pointer"
+          : "px-3 py-2.5 rounded-xl border border-slate-700 bg-[#1b2338] text-slate-300 text-xs font-extrabold transition cursor-pointer";
+
+        // Update Guess Counter & 10-Segment Bar
+        var count = gameState.guesses.length;
+        if (gameState.status === "won") {
+          els.guessCounterText.textContent = "Solved in " + count + " of " + MAX_GUESSES + "!";
+        } else if (gameState.status === "lost") {
+          els.guessCounterText.textContent = "Round Complete (" + count + "/" + MAX_GUESSES + ")";
+        } else {
+          els.guessCounterText.textContent = "Guess " + Math.min(count + 1, MAX_GUESSES) + " of " + MAX_GUESSES;
+        }
+
+        var segHtml = "";
+        for (var s = 0; s < MAX_GUESSES; s++) {
+          var segClass = "h-1.5 rounded-full bg-slate-800 transition-all";
+          if (s < count) {
+            var gItem = gameState.guesses[s];
+            if (gItem.movie.id === gameState.targetMovie.id) {
+              segClass = "h-1.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50";
+            } else {
+              segClass = "h-1.5 rounded-full bg-pink-500";
+            }
+          } else if (s === count && gameState.status === "playing") {
+            segClass = "h-1.5 rounded-full bg-amber-400/70 animate-pulse";
+          }
+          segHtml += '<div class="' + segClass + '"></div>';
+        }
+        els.progressSegments.innerHTML = segHtml;
+
+        // Disable search & give up when game ended
+        var isPlaying = gameState.status === "playing";
+        els.searchInput.disabled = !isPlaying;
+        els.btnGiveUp.disabled = !isPlaying;
+        els.btnGiveUp.classList.toggle("opacity-40", !isPlaying);
+        els.btnGiveUp.classList.toggle("pointer-events-none", !isPlaying);
+      }
+
+      function statusClass(status) {
+        if (status === "exact") return "tile-exact";
+        if (status === "close") return "tile-close";
+        return "tile-miss";
+      }
+
+      function statusIcon(status) {
+        if (status === "exact") return '<span class="text-emerald-300 font-black">✓</span>';
+        if (status === "close") return '<span class="text-amber-300 font-black">≈</span>';
+        return '<span class="text-slate-500 font-bold">✕</span>';
+      }
+
+      function renderGuessCard(entry, guessNumber) {
+        var m = entry.movie;
+        var c = entry.cmp;
+
+        // Genres Pills
+        var genrePillsHtml = m.genres.map(function (g) {
+          var isMatched = c.genres.matchedList.indexOf(normalizeText(g)) !== -1;
+          var pillCls = isMatched
+            ? "bg-emerald-500/30 border-emerald-400/60 text-emerald-100"
+            : "bg-slate-900/50 border-white/10 text-slate-300";
+          return '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ' + pillCls + '">' + escapeHtml(g) + '</span>';
+        }).join("");
+
+        // Cast Items (Director, Lead, Support 1-3)
+        var castList = [
+          { role: "DIRECTOR", name: m.director, status: c.director.status },
+          { role: "LEAD", name: m.lead, status: c.lead.status },
+          { role: "SUPPORT 1", name: m.support[0] || "—", status: (c.support[0] && c.support[0].status) || "miss" },
+          { role: "SUPPORT 2", name: m.support[1] || "—", status: (c.support[1] && c.support[1].status) || "miss" },
+          { role: "SUPPORT 3", name: m.support[2] || "—", status: (c.support[2] && c.support[2].status) || "miss" }
+        ];
+
+        var castHtml = castList.map(function (person) {
+          var ringCls = person.status === "exact"
+            ? "border-emerald-400 bg-emerald-500/25 text-emerald-200"
+            : (person.status === "close"
+              ? "border-amber-400 bg-amber-500/25 text-amber-200"
+              : "border-slate-700 bg-[#131929] text-slate-300");
+
+          return [
+            '<div class="rounded-xl border p-2 flex flex-col items-center text-center ' + statusClass(person.status) + '">',
+            '<span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">' + person.role + '</span>',
+            '<div class="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-black mb-1 ' + ringCls + '">',
+            escapeHtml(getInitials(person.name)),
+            '</div>',
+            '<div class="text-[11px] font-bold text-white leading-tight line-clamp-2">' + escapeHtml(person.name) + '</div>',
+            '</div>'
+          ].join("");
+        }).join("");
+
+        return [
+          '<article class="rounded-2xl bg-[#131929] border border-slate-800/95 p-3.5 sm:p-4 shadow-xl guess-card-enter">',
+          '  <!-- Card Header -->',
+          '  <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">',
+          '    <div class="flex items-center gap-3 min-w-0">',
+          '      <div class="w-11 h-16 rounded-lg overflow-hidden border border-white/15 shrink-0 shadow-md">' + buildPosterSvg(m) + '</div>',
+          '      <div class="min-w-0">',
+          '        <div class="flex items-center gap-2 flex-wrap">',
+          '          <h3 class="text-sm sm:text-base font-black text-white truncate">' + escapeHtml(m.title) + '</h3>',
+          '          <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">' + escapeHtml(m.industry) + '</span>',
+          '        </div>',
+          '        <p class="text-xs text-slate-400 font-medium mt-0.5">' + escapeHtml(m.year) + ' • Dir. ' + escapeHtml(m.director) + '</p>',
+          '      </div>',
+          '    </div>',
+          '    <span class="px-2.5 py-1 rounded-lg bg-[#1b2338] border border-slate-700 text-[10px] font-extrabold tracking-wider text-slate-300 shrink-0">GUESS ' + guessNumber + '</span>',
+          '  </div>',
+
+          '  <!-- Full-Width Genres Bar -->',
+          '  <div class="mt-3 rounded-xl border p-2.5 ' + statusClass(c.genres.status) + '">',
+          '    <div class="flex items-center justify-between mb-1.5">',
+          '      <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-300">GENRES</span>',
+          '      <span class="text-xs">' + statusIcon(c.genres.status) + '</span>',
+          '    </div>',
+          '    <div class="flex flex-wrap gap-1.5">' + genrePillsHtml + '</div>',
+          '  </div>',
+
+          '  <!-- 3-Column Attribute Grid -->',
+          '  <div class="mt-2.5 grid grid-cols-3 gap-2">',
+          '    <!-- YEAR -->',
+          '    <div class="rounded-xl border p-2.5 text-center ' + statusClass(c.year.status) + '">',
+          '      <div class="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">',
+          '        <span>YEAR</span>' + statusIcon(c.year.status),
+          '      </div>',
+          '      <div class="mt-1 text-sm sm:text-base font-black text-white">' + escapeHtml(m.year) + ' <span class="text-amber-300">' + c.year.arrow + '</span></div>',
+          '    </div>',
+
+          '    <!-- BOX OFFICE -->',
+          '    <div class="rounded-xl border p-2.5 text-center ' + statusClass(c.boxOffice.status) + '">',
+          '      <div class="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">',
+          '        <span>BOX OFFICE</span>' + statusIcon(c.boxOffice.status),
+          '      </div>',
+          '      <div class="mt-1 text-xs sm:text-sm font-black text-white truncate">' + escapeHtml(m.boxOfficeDisplay) + ' <span class="text-amber-300">' + c.boxOffice.arrow + '</span></div>',
+          '    </div>',
+
+          '    <!-- SCORE -->',
+          '    <div class="rounded-xl border p-2.5 text-center ' + statusClass(c.score.status) + '">',
+          '      <div class="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">',
+          '        <span>SCORE</span>' + statusIcon(c.score.status),
+          '      </div>',
+          '      <div class="mt-1 text-sm sm:text-base font-black text-white">' + escapeHtml(m.score) + '/100 <span class="text-amber-300">' + c.score.arrow + '</span></div>',
+          '    </div>',
+
+          '    <!-- RATED -->',
+          '    <div class="rounded-xl border p-2.5 text-center ' + statusClass(c.rated.status) + '">',
+          '      <div class="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">',
+          '        <span>RATED</span>' + statusIcon(c.rated.status),
+          '      </div>',
+          '      <div class="mt-1 text-sm sm:text-base font-black text-white">' + escapeHtml(m.rated) + '</div>',
+          '    </div>',
+
+          '    <!-- STUDIO -->',
+          '    <div class="rounded-xl border p-2.5 text-center ' + statusClass(c.studio.status) + '">',
+          '      <div class="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">',
+          '        <span>STUDIO</span>' + statusIcon(c.studio.status),
+          '      </div>',
+          '      <div class="mt-1 text-[11px] sm:text-xs font-extrabold text-white leading-tight line-clamp-2">' + escapeHtml(m.studio) + '</div>',
+          '    </div>',
+
+          '    <!-- MUSIC -->',
+          '    <div class="rounded-xl border p-2.5 text-center ' + statusClass(c.music.status) + '">',
+          '      <div class="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-slate-400">',
+          '        <span>MUSIC</span>' + statusIcon(c.music.status),
+          '      </div>',
+          '      <div class="mt-1 text-[11px] sm:text-xs font-extrabold text-white leading-tight line-clamp-2">' + escapeHtml(m.music) + '</div>',
+          '    </div>',
+          '  </div>',
+
+          '  <!-- Cast & Director Row -->',
+          '  <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-5 gap-2">' + castHtml + '</div>',
+          '</article>'
+        ].join("");
+      }
+
+      function renderGuessesList() {
+        if (gameState.guesses.length === 0) {
+          els.emptyState.classList.remove("hidden");
+          els.guessesContainer.innerHTML = "";
+          return;
+        }
+        els.emptyState.classList.add("hidden");
+        var html = "";
+        for (var i = gameState.guesses.length - 1; i >= 0; i--) {
+          html += renderGuessCard(gameState.guesses[i], i + 1);
+        }
+        els.guessesContainer.innerHTML = html;
+      }
+
+      function renderResultBanner() {
+        if (gameState.status === "playing" || !gameState.targetMovie) {
+          els.resultBanner.classList.add("hidden");
+          return;
+        }
+        var t = gameState.targetMovie;
+        els.resultBanner.classList.remove("hidden");
+        els.resultPoster.innerHTML = buildPosterSvg(t);
+
+        if (gameState.status === "won") {
+          els.resultBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+          els.resultBadge.textContent = "🎉 Splendid! Solved in " + gameState.guesses.length + "/" + MAX_GUESSES;
+        } else {
+          els.resultBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40";
+          els.resultBadge.textContent = "🎬 The Secret Movie Was";
+        }
+
+        els.resultTitle.textContent = t.title + " (" + t.year + ")";
+        els.resultMeta.textContent = t.industry + " • " + t.genres.join(", ") + " • " + t.boxOfficeDisplay + " • " + t.score + "/100";
+        els.resultTagline.textContent = "“" + t.tagline + "”";
+
+        var credits = [
+          "Dir: " + t.director,
+          "Lead: " + t.lead,
+          "Music: " + t.music,
+          "Studio: " + t.studio
+        ];
+        els.resultCredits.innerHTML = credits.map(function (item) {
+          return '<span class="px-2.5 py-1 rounded-lg bg-[#1b2338] border border-slate-700 font-semibold">' + escapeHtml(item) + '</span>';
+        }).join("");
+      }
+
+      // =========================================================================
+      // 8. HINTS & STATS RENDERING
+      // =========================================================================
+      function renderHintsModal() {
+        var t = gameState.targetMovie;
+        if (!t) return;
+        var decade = Math.floor(t.year / 10) * 10 + "s";
+        var wordCount = t.title.trim().split(/\s+/).length;
+        var firstChar = t.title.trim().charAt(0).toUpperCase();
+
+        var clues = [
+          {
+            label: "Clue 1 — Industry, Era & Rating",
+            text: "It is a " + t.industry + " film from the " + decade + " rated " + t.rated + "."
+          },
+          {
+            label: "Clue 2 — Tagline / Premise",
+            text: "“" + t.tagline + "”"
+          },
+          {
+            label: "Clue 3 — Studio & Music",
+            text: "Produced by " + t.studio + " with music by " + t.music + "."
+          },
+          {
+            label: "Clue 4 — Title & Director Initials",
+            text: "Starts with “" + firstChar + "” (" + wordCount + (wordCount === 1 ? " word" : " words") + "), directed by " + t.director + "."
+          }
+        ];
+
+        var html = "";
+        for (var i = 0; i < clues.length; i++) {
+          var unlocked = i < gameState.hintsRevealed;
+          if (unlocked) {
+            html += [
+              '<div class="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40">',
+              '<div class="text-[10px] font-extrabold uppercase tracking-wider text-amber-300">' + clues[i].label + '</div>',
+              '<div class="text-xs sm:text-sm font-bold text-white mt-0.5">' + escapeHtml(clues[i].text) + '</div>',
+              '</div>'
+            ].join("");
+          } else {
+            html += [
+              '<div class="p-3 rounded-xl bg-[#1b2338] border border-slate-800 flex items-center justify-between">',
+              '<span class="text-xs font-bold text-slate-400">' + clues[i].label + '</span>',
+              '<span class="text-[11px] font-bold text-slate-500">🔒 Locked</span>',
+              '</div>'
+            ].join("");
+          }
+        }
+        els.hintsList.innerHTML = html;
+
+        if (gameState.hintsRevealed >= clues.length) {
+          els.btnRevealNextHint.disabled = true;
+          els.btnRevealNextHint.textContent = "All 4 Clues Revealed";
+          els.btnRevealNextHint.classList.add("opacity-50");
+        } else {
+          els.btnRevealNextHint.disabled = false;
+          els.btnRevealNextHint.textContent = "Reveal Clue " + (gameState.hintsRevealed + 1) + " of 4";
+          els.btnRevealNextHint.classList.remove("opacity-50");
+        }
+      }
+
+      function renderStatsModal() {
+        els.statPlayed.textContent = stats.played;
+        var winPct = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0;
+        els.statWinPct.textContent = winPct + "%";
+        els.statStreak.textContent = stats.streak;
+        els.statMaxStreak.textContent = stats.maxStreak;
+
+        var maxVal = 1;
+        for (var g = 1; g <= MAX_GUESSES; g++) {
+          var v = stats.distribution[String(g)] || 0;
+          if (v > maxVal) maxVal = v;
+        }
+
+        var distHtml = "";
+        for (var i = 1; i <= MAX_GUESSES; i++) {
+          var count = stats.distribution[String(i)] || 0;
+          var pct = Math.max(8, Math.round((count / maxVal) * 100));
+          distHtml += [
+            '<div class="flex items-center gap-2">',
+            '<span class="w-4 text-right font-bold text-slate-400">' + i + '</span>',
+            '<div class="flex-1 bg-[#1b2338] rounded-md overflow-hidden h-5 flex items-center">',
+            '<div style="width:' + pct + '%" class="h-full bg-gradient-to-r from-pink-500 to-amber-400 px-2 flex items-center justify-end text-[10px] font-black text-slate-950">' + count + '</div>',
+            '</div>',
+            '</div>'
+          ].join("");
+        }
+        els.statDistribution.innerHTML = distHtml;
+      }
+
+      // =========================================================================
+      // 9. SEARCH DROPDOWN & OPTIONAL TMDB LIVE SEARCH
+      // =========================================================================
+      var tmdbDebounceTimer = null;
+
+      function renderDropdownItems(localMatches, tmdbMatches, isLoadingTmdb) {
+        var guessedIds = gameState.guesses.map(function (g) { return g.movie.id; });
+        var html = "";
+
+        if (localMatches.length === 0 && (!tmdbMatches || tmdbMatches.length === 0) && !isLoadingTmdb) {
+          els.searchDropdown.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">No matching movies found. Try another title or industry filter.</div>';
+          els.searchDropdown.classList.remove("hidden");
+          return;
+        }
+
+        localMatches.slice(0, 25).forEach(function (m) {
+          var alreadyGuessed = guessedIds.indexOf(m.id) !== -1;
+          html += [
+            '<button type="button" data-select-movie-id="' + escapeHtml(m.id) + '" ' + (alreadyGuessed ? "disabled" : "") + ' ',
+            'class="w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left transition ' + (alreadyGuessed ? "opacity-45 cursor-not-allowed bg-slate-900/50" : "hover:bg-[#1b2338] cursor-pointer") + '">',
+            '  <div class="flex items-center gap-3 min-w-0">',
+            '    <div class="w-8 h-11 rounded-md overflow-hidden shrink-0 border border-white/10">' + buildPosterSvg(m) + '</div>',
+            '    <div class="min-w-0">',
+            '      <div class="text-xs sm:text-sm font-extrabold text-white truncate">' + escapeHtml(m.title) + ' <span class="text-slate-400 font-normal">(' + escapeHtml(m.year) + ')</span></div>',
+            '      <div class="text-[11px] text-slate-400 truncate">Dir. ' + escapeHtml(m.director) + ' • ' + escapeHtml(m.lead) + '</div>',
+            '    </div>',
+            '  </div>',
+            '  <div class="flex items-center gap-1.5 shrink-0">',
+            alreadyGuessed ? '<span class="text-[10px] font-bold text-slate-400">Guessed</span>' : '',
+            '    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-pink-500/15 text-pink-300 border border-pink-500/30">' + escapeHtml(m.industry) + '</span>',
+            '  </div>',
+            '</button>'
+          ].join("");
+        });
+
+        if (isLoadingTmdb) {
+          html += '<div class="p-3 text-center text-xs text-sky-300 font-semibold">Searching global TMDB catalog...</div>';
+        } else if (tmdbMatches && tmdbMatches.length > 0) {
+          html += '<div class="px-3.5 py-1.5 bg-sky-950/40 text-[10px] font-extrabold uppercase tracking-wider text-sky-300">Global TMDB Results</div>';
+          tmdbMatches.slice(0, 8).forEach(function (tm) {
+            var yr = (tm.release_date || "").slice(0, 4) || "N/A";
+            html += [
+              '<button type="button" data-select-tmdb-id="' + escapeHtml(tm.id) + '" ',
+              'class="w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[#1b2338] transition cursor-pointer">',
+              '  <div class="min-w-0">',
+              '    <div class="text-xs sm:text-sm font-extrabold text-white truncate">' + escapeHtml(tm.title) + ' <span class="text-slate-400 font-normal">(' + escapeHtml(yr) + ')</span></div>',
+              '    <div class="text-[11px] text-slate-400 truncate">TMDB Global Catalog</div>',
+              '  </div>',
+              '  <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 shrink-0">TMDB</span>',
+              '</button>'
+            ].join("");
+          });
+        }
+
+        els.searchDropdown.innerHTML = html;
+        els.searchDropdown.classList.remove("hidden");
+      }
+
+      function handleSearchInput(forceBrowseAll) {
+        if (gameState.status !== "playing") return;
+        var q = els.searchInput.value.trim();
+        els.btnClearSearch.classList.toggle("hidden", q.length === 0);
+
+        var pool = getFilteredPool();
+        var localMatches = [];
+
+        if (!q && forceBrowseAll) {
+          localMatches = pool.slice().sort(function (a, b) {
+            return a.title.localeCompare(b.title);
+          });
+        } else if (q.length > 0) {
+          var lowerQ = q.toLowerCase();
+          localMatches = pool.filter(function (m) {
+            return (
+              m.title.toLowerCase().indexOf(lowerQ) !== -1 ||
+              m.director.toLowerCase().indexOf(lowerQ) !== -1 ||
+              m.lead.toLowerCase().indexOf(lowerQ) !== -1 ||
+              m.industry.toLowerCase().indexOf(lowerQ) !== -1
+            );
+          });
+        } else {
+          els.searchDropdown.classList.add("hidden");
+          return;
+        }
+
+        var hasTmdb = settings.tmdbKey && settings.tmdbKey.trim().length > 5 && q.length >= 2;
+        renderDropdownItems(localMatches, [], hasTmdb);
+
+        if (hasTmdb) {
+          if (tmdbDebounceTimer) clearTimeout(tmdbDebounceTimer);
+          tmdbDebounceTimer = setTimeout(function () {
+            fetchTmdbSearch(q, localMatches);
+          }, 320);
+        }
+      }
+
+      function fetchTmdbSearch(query, localMatches) {
+        var url = "https://api.themoviedb.org/3/search/movie?api_key=" +
+          encodeURIComponent(settings.tmdbKey.trim()) +
+          "&query=" + encodeURIComponent(query);
+
+        fetch(url)
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            if (!data || !Array.isArray(data.results)) {
+              renderDropdownItems(localMatches, [], false);
+              return;
+            }
+            var localTitles = localMatches.map(function (m) { return normalizeText(m.title); });
+            var filteredTmdb = data.results.filter(function (item) {
+              return item.title && localTitles.indexOf(normalizeText(item.title)) === -1;
+            });
+            renderDropdownItems(localMatches, filteredTmdb, false);
+          })
+          .catch(function () {
+            renderDropdownItems(localMatches, [], false);
+          });
+      }
+
+      function fetchAndSubmitTmdbMovie(tmdbId) {
+        var key = "tmdb-" + tmdbId;
+        if (gameState.tmdbCache[key]) {
+          submitGuess(gameState.tmdbCache[key]);
+          return;
+        }
+        showToast("Fetching movie details from TMDB...");
+        var url = "https://api.themoviedb.org/3/movie/" + encodeURIComponent(tmdbId) +
+          "?api_key=" + encodeURIComponent(settings.tmdbKey.trim()) +
+          "&append_to_response=credits,release_dates";
+
+        fetch(url)
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            if (!data) {
+              showToast("Could not load TMDB movie details.");
+              return;
+            }
+            var revM = Math.max(1, Math.round((data.revenue || 10000000) / 1000000));
+            var lang = data.original_language || "en";
+            var ind = lang === "hi" ? "Bollywood" : (lang === "kn" ? "Kannada" : (["te", "ta", "ml"].indexOf(lang) !== -1 ? "Pan-India" : "Hollywood"));
+            var boDisp = ind === "Hollywood" ? ("$" + revM + "M") : ("~₹" + Math.round(revM * 8.3) + " Cr");
+
+            var crew = (data.credits && data.credits.crew) || [];
+            var cast = (data.credits && data.credits.cast) || [];
+            var dirObj = crew.find(function (c) { return c.job === "Director"; });
+            var musObj = crew.find(function (c) { return c.job === "Original Music Composer" || c.job === "Music"; });
+            var studioObj = (data.production_companies && data.production_companies[0]) || { name: "Independent" };
+
+            var normalizedMovie = {
+              id: key,
+              title: data.title || "Unknown",
+              industry: ind,
+              year: Number((data.release_date || "2020").slice(0, 4)) || 2020,
+              genres: (data.genres && data.genres.length > 0) ? data.genres.slice(0, 3).map(function (g) { return g.name; }) : ["Drama"],
+              boxOfficeDisplay: boDisp,
+              boxOfficeUsdM: revM,
+              score: Math.round((data.vote_average || 7) * 10),
+              rated: data.adult ? "A" : "UA",
+              studio: studioObj.name,
+              music: musObj ? musObj.name : "Various Artists",
+              director: dirObj ? dirObj.name : "Unknown",
+              lead: cast[0] ? cast[0].name : "Unknown",
+              support: [
+                cast[1] ? cast[1].name : "—",
+                cast[2] ? cast[2].name : "—",
+                cast[3] ? cast[3].name : "—"
+              ],
+              tagline: data.tagline || "Feature film.",
+              colors: ["#0f172a", "#38bdf8"]
+            };
+
+            gameState.tmdbCache[key] = normalizedMovie;
+            submitGuess(normalizedMovie);
+          })
+          .catch(function () {
+            showToast("Network error reaching TMDB.");
+          });
+      }
+
+      // =========================================================================
+      // 10. CORE GAMEPLAY FLOW (START ROUND, SUBMIT GUESS, PERSISTENCE)
+      // =========================================================================
+      function saveDailyProgressIfNeeded() {
+        if (settings.mode !== "daily" || !gameState.targetMovie) return;
+        var dailyStore = safeGetStorage(STORAGE_KEYS.DAILY_STATE, {});
+        var bucketKey = getTodayKey() + ":" + settings.industry;
+        dailyStore[bucketKey] = {
+          targetId: gameState.targetMovie.id,
+          guesses: gameState.guesses.map(function (g) { return g.movie; }),
+          status: gameState.status,
+          hintsRevealed: gameState.hintsRevealed
+        };
+        safeSetStorage(STORAGE_KEYS.DAILY_STATE, dailyStore);
+      }
+
+      function recordRoundOutcome(won, guessCount) {
+        stats.played += 1;
+        if (won) {
+          stats.wins += 1;
+          stats.streak += 1;
+          if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+          var key = String(guessCount);
+          stats.distribution[key] = (stats.distribution[key] || 0) + 1;
+        } else {
+          stats.streak = 0;
+        }
+        safeSetStorage(STORAGE_KEYS.STATS, stats);
+      }
+
+      function startNewRound(forceRandom) {
+        var pool = getFilteredPool();
+        if (pool.length === 0) return;
+
+        els.searchInput.value = "";
+        els.btnClearSearch.classList.add("hidden");
+        els.searchDropdown.classList.add("hidden");
+
+        if (settings.mode === "daily" && !forceRandom) {
+          var target = getDailyMovie(pool);
+          var dailyStore = safeGetStorage(STORAGE_KEYS.DAILY_STATE, {});
+          var bucketKey = getTodayKey() + ":" + settings.industry;
+          var saved = dailyStore[bucketKey];
+
+          if (saved && saved.targetId === target.id) {
+            gameState.targetMovie = target;
+            gameState.status = saved.status || "playing";
+            gameState.hintsRevealed = saved.hintsRevealed || 0;
+            gameState.guesses = (saved.guesses || []).map(function (m) {
+              return { movie: m, cmp: compareMovies(m, target) };
+            });
+          } else {
+            gameState.targetMovie = target;
+            gameState.guesses = [];
+            gameState.status = "playing";
+            gameState.hintsRevealed = 0;
+          }
+        } else {
+          var prevId = gameState.targetMovie ? gameState.targetMovie.id : null;
+          gameState.targetMovie = getRandomMovie(pool, prevId);
+          gameState.guesses = [];
+          gameState.status = "playing";
+          gameState.hintsRevealed = 0;
+        }
+
+        updateHeaderAndControls();
+        renderGuessesList();
+        renderResultBanner();
+      }
+
+      function submitGuess(movie) {
+        if (gameState.status !== "playing" || !gameState.targetMovie) return;
+        var already = gameState.guesses.some(function (g) { return g.movie.id === movie.id; });
+        if (already) {
+          showToast("You already guessed that movie!");
+          return;
+        }
+
+        els.searchInput.value = "";
+        els.btnClearSearch.classList.add("hidden");
+        els.searchDropdown.classList.add("hidden");
+
+        var cmp = compareMovies(movie, gameState.targetMovie);
+        gameState.guesses.push({ movie: movie, cmp: cmp });
+
+        var isWin = movie.id === gameState.targetMovie.id ||
+          (normalizeText(movie.title) === normalizeText(gameState.targetMovie.title) && movie.year === gameState.targetMovie.year);
+
+        if (isWin) {
+          gameState.status = "won";
+          recordRoundOutcome(true, gameState.guesses.length);
+        } else if (gameState.guesses.length >= MAX_GUESSES) {
+          gameState.status = "lost";
+          recordRoundOutcome(false, gameState.guesses.length);
+        }
+
+        saveDailyProgressIfNeeded();
+        updateHeaderAndControls();
+        renderGuessesList();
+        renderResultBanner();
+      }
+
+      // =========================================================================
+      // 11. SHARE EMOJI GRID & CLIPBOARD
+      // =========================================================================
+      function buildShareText() {
+        var t = gameState.targetMovie;
+        var header = "🎬 CineSpotle (" + settings.industry + " • " + (settings.mode === "daily" ? getTodayKey() : "Endless") + ") " +
+          (gameState.status === "won" ? gameState.guesses.length : "X") + "/" + MAX_GUESSES;
+
+        var rows = gameState.guesses.map(function (g) {
+          var c = g.cmp;
+          var cells = [
+            c.genres.status,
+            c.year.status,
+            c.boxOffice.status,
+            c.score.status,
+            c.rated.status,
+            c.studio.status,
+            c.music.status,
+            c.director.status,
+            c.lead.status
+          ];
+          return cells.map(function (st) {
+            return st === "exact" ? "🟩" : (st === "close" ? "🟨" : "⬛");
+          }).join("");
+        });
+
+        return [header, "Movie: " + t.title + " (" + t.year + ")"].concat(rows).join("\n");
+      }
+
+      function copyShareResult() {
+        var text = buildShareText();
+        var tempArea = document.createElement("textarea");
+        tempArea.value = text;
+        tempArea.setAttribute("readonly", "");
+        tempArea.style.position = "fixed";
+        tempArea.style.opacity = "0";
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        var ok = false;
+        try {
+          ok = document.execCommand("copy");
+        } catch (e) {
+          ok = false;
+        }
+        document.body.removeChild(tempArea);
+
+        if (ok) {
+          showToast("Result copied to clipboard!");
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            showToast("Result copied to clipboard!");
+          }).catch(function () {
+            showToast("Could not copy automatically.");
+          });
+        }
+      }
+
+      // =========================================================================
+      // 12. MODAL & DRAWER OPEN / CLOSE HELPERS
+      // =========================================================================
+      function openModal(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove("hidden");
+      }
+
+      function closeModal(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add("hidden");
+      }
+
+      function openDrawer() {
+        els.drawerBackdrop.classList.remove("hidden");
+        els.navDrawer.classList.remove("-translate-x-full");
+      }
+
+      function closeDrawer() {
+        els.drawerBackdrop.classList.add("hidden");
+        els.navDrawer.classList.add("-translate-x-full");
+      }
+
+      function updateSettings(patch) {
+        var industryChanged = patch.industry && patch.industry !== settings.industry;
+        var modeChanged = patch.mode && patch.mode !== settings.mode;
+        Object.assign(settings, patch);
+        safeSetStorage(STORAGE_KEYS.SETTINGS, settings);
+        updateHeaderAndControls();
+        if (industryChanged || modeChanged) {
+          startNewRound(false);
+        }
+      }
+
+      // =========================================================================
+      // 13. EVENT LISTENERS (CLEAN, CENTRALIZED, ZERO INLINE HANDLERS)
+      // =========================================================================
+      els.btnOpenDrawer.addEventListener("click", openDrawer);
+      els.btnCloseDrawer.addEventListener("click", closeDrawer);
+      els.drawerBackdrop.addEventListener("click", closeDrawer);
+
+      els.btnOpenSettings.addEventListener("click", function () {
+        els.resetConfirmBox.classList.add("hidden");
+        openModal("modal-settings");
+      });
+
+      els.btnOpenHelp.addEventListener("click", function () {
+        openModal("modal-help");
+      });
+
+      els.btnOpenStats.addEventListener("click", function () {
+        renderStatsModal();
+        openModal("modal-stats");
+      });
+
+      els.btnOpenHint.addEventListener("click", function () {
+        renderHintsModal();
+        openModal("modal-hint");
+      });
+
+      els.btnRevealNextHint.addEventListener("click", function () {
+        if (gameState.hintsRevealed < 4) {
+          gameState.hintsRevealed += 1;
+          saveDailyProgressIfNeeded();
+          updateHeaderAndControls();
+          renderHintsModal();
+        }
+      });
+
+      // Modal Close Buttons & Backdrop Clicks
+      var closeButtons = document.querySelectorAll("[data-close-modal]");
+      for (var i = 0; i < closeButtons.length; i++) {
+        closeButtons[i].addEventListener("click", function () {
+          closeModal(this.getAttribute("data-close-modal"));
+        });
+      }
+
+      ["modal-settings", "modal-hint", "modal-help", "modal-stats", "modal-giveup"].forEach(function (modalId) {
+        var mEl = document.getElementById(modalId);
+        if (mEl) {
+          mEl.addEventListener("click", function (ev) {
+            if (ev.target === mEl) closeModal(modalId);
+          });
+        }
+      });
+
+      // Drawer Links
+      document.getElementById("drawer-link-stats").addEventListener("click", function () {
+        closeDrawer();
+        renderStatsModal();
+        openModal("modal-stats");
+      });
+
+      document.getElementById("drawer-link-settings").addEventListener("click", function () {
+        closeDrawer();
+        openModal("modal-settings");
+      });
+
+      document.getElementById("drawer-link-help").addEventListener("click", function () {
+        closeDrawer();
+        openModal("modal-help");
+      });
+
+      // Industry & Mode Switchers (Quick chips, Drawer, Settings)
+      var quickIndBtns = document.querySelectorAll(".quick-ind-btn");
+      for (var q = 0; q < quickIndBtns.length; q++) {
+        quickIndBtns[q].addEventListener("click", function () {
+          updateSettings({ industry: this.getAttribute("data-quick-industry") });
+        });
+      }
+
+      var drawerIndBtns = document.querySelectorAll(".drawer-ind-item");
+      for (var d = 0; d < drawerIndBtns.length; d++) {
+        drawerIndBtns[d].addEventListener("click", function () {
+          updateSettings({ industry: this.getAttribute("data-drawer-industry") });
+          closeDrawer();
+        });
+      }
+
+      var drawerModeBtns = document.querySelectorAll(".drawer-mode-item");
+      for (var dm = 0; dm < drawerModeBtns.length; dm++) {
+        drawerModeBtns[dm].addEventListener("click", function () {
+          updateSettings({ mode: this.getAttribute("data-drawer-mode") });
+          closeDrawer();
+        });
+      }
+
+      els.settingIndustry.addEventListener("change", function () {
+        updateSettings({ industry: this.value });
+      });
+
+      els.settingModeDaily.addEventListener("click", function () {
+        updateSettings({ mode: "daily" });
+      });
+
+      els.settingModeEndless.addEventListener("click", function () {
+        updateSettings({ mode: "endless" });
+      });
+
+      els.settingThemeMarquee.addEventListener("click", function () {
+        updateSettings({ theme: "marquee" });
+      });
+
+      els.settingThemeMidnight.addEventListener("click", function () {
+        updateSettings({ theme: "midnight" });
+      });
+
+      els.btnSaveTmdb.addEventListener("click", function () {
+        var val = els.settingTmdbKey.value.trim();
+        updateSettings({ tmdbKey: val });
+        showToast(val ? "TMDB v3 API key saved!" : "TMDB key cleared.");
+      });
+
+      els.btnClearTmdb.addEventListener("click", function () {
+        els.settingTmdbKey.value = "";
+        updateSettings({ tmdbKey: "" });
+        showToast("TMDB API key removed.");
+      });
+
+      els.btnResetStats.addEventListener("click", function () {
+        els.resetConfirmBox.classList.remove("hidden");
+      });
+
+      els.btnCancelReset.addEventListener("click", function () {
+        els.resetConfirmBox.classList.add("hidden");
+      });
+
+      els.btnConfirmReset.addEventListener("click", function () {
+        stats = {
+          played: 0,
+          wins: 0,
+          streak: 0,
+          maxStreak: 0,
+          distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0, "10": 0 }
+        };
+        safeSetStorage(STORAGE_KEYS.STATS, stats);
+        els.resetConfirmBox.classList.add("hidden");
+        showToast("Local stats reset.");
+      });
+
+      // Give Up & New Movie Buttons
+      els.btnGiveUp.addEventListener("click", function () {
+        if (gameState.status === "playing") openModal("modal-giveup");
+      });
+
+      els.btnCancelGiveUp.addEventListener("click", function () {
+        closeModal("modal-giveup");
+      });
+
+      els.btnConfirmGiveUp.addEventListener("click", function () {
+        closeModal("modal-giveup");
+        if (gameState.status === "playing") {
+          gameState.status = "lost";
+          recordRoundOutcome(false, gameState.guesses.length);
+          saveDailyProgressIfNeeded();
+          updateHeaderAndControls();
+          renderResultBanner();
+        }
+      });
+
+      els.btnNewMovie.addEventListener("click", function () {
+        startNewRound(true);
+        showToast("New movie loaded!");
+      });
+
+      els.btnPlayAnother.addEventListener("click", function () {
+        if (settings.mode === "daily") {
+          updateSettings({ mode: "endless" });
+        }
+        startNewRound(true);
+      });
+
+      els.btnShareResult.addEventListener("click", copyShareResult);
+
+      // Search Input & Dropdown Delegation
+      els.searchInput.addEventListener("input", function () {
+        handleSearchInput(false);
+      });
+
+      els.searchInput.addEventListener("focus", function () {
+        if (els.searchInput.value.trim().length > 0) {
+          handleSearchInput(false);
+        }
+      });
+
+      els.btnBrowseAll.addEventListener("click", function () {
+        if (gameState.status !== "playing") return;
+        if (!els.searchDropdown.classList.contains("hidden") && els.searchInput.value.trim() === "") {
+          els.searchDropdown.classList.add("hidden");
+        } else {
+          els.searchInput.value = "";
+          handleSearchInput(true);
+        }
+      });
+
+      els.btnClearSearch.addEventListener("click", function () {
+        els.searchInput.value = "";
+        els.btnClearSearch.classList.add("hidden");
+        els.searchDropdown.classList.add("hidden");
+        els.searchInput.focus();
+      });
+
+      els.searchDropdown.addEventListener("click", function (ev) {
+        var localBtn = ev.target.closest("[data-select-movie-id]");
+        if (localBtn && !localBtn.disabled) {
+          var mId = localBtn.getAttribute("data-select-movie-id");
+          var found = ALL_MOVIES.find(function (m) { return m.id === mId; });
+          if (found) submitGuess(found);
+          return;
+        }
+
+        var tmdbBtn = ev.target.closest("[data-select-tmdb-id]");
+        if (tmdbBtn) {
+          var tId = tmdbBtn.getAttribute("data-select-tmdb-id");
+          if (tId) fetchAndSubmitTmdbMovie(tId);
+        }
+      });
+
+      // Close dropdown when tapping outside search section
+      document.addEventListener("click", function (ev) {
+        if (!els.searchSection.contains(ev.target)) {
+          els.searchDropdown.classList.add("hidden");
+        }
+      });
+
+      // =========================================================================
+      // 14. INITIALIZE APP
+      // =========================================================================
+      renderMarqueeBulbs();
+      startNewRound(false);
+    });
+  </script>
+</body>
+</html>
